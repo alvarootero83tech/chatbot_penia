@@ -2,20 +2,40 @@ from flask import Flask, request, jsonify
 import mysql.connector
 from mysql.connector import Error
 import re
+import os
 
 app = Flask(__name__)
 
 # =============================================
 # CONEXIÓN A LA BASE DE DATOS
 # =============================================
+import os
+import mysql.connector
+from mysql.connector import Error
+
+# =============================================
+# CONEXIÓN A LA BASE DE DATOS
+# =============================================
 def get_db_connection():
     try:
+        # Leer las variables de entorno (los valores que configuraste en Render)
+        db_host = os.environ.get('DB_HOST', 'localhost')
+        db_port = os.environ.get('DB_PORT', '3306')
+        db_name = os.environ.get('DB_NAME', 'mhdp')
+        db_user = os.environ.get('DB_USER', 'root')
+        db_password = os.environ.get('DB_PASSWORD', '')
+        
+        # Para depuración (después puedes borrar estos prints)
+        print(f"Conectando a BD: host={db_host}, port={db_port}, db={db_name}, user={db_user}")
+        
         connection = mysql.connector.connect(
-            host='localhost',
-            database='mhdp',
-            user='root',
-            password=''
+            host=db_host,
+            port=int(db_port),
+            database=db_name,
+            user=db_user,
+            password=db_password
         )
+        print("✅ Conexión exitosa a la base de datos")
         return connection
     except Error as e:
         print(f"Error de conexión: {e}")
