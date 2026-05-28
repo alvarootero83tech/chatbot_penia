@@ -4,7 +4,10 @@ from mysql.connector import Error
 import re
 import os
 
+from flask_cors import CORS
 app = Flask(__name__)
+CORS(app)
+
 
 # =============================================
 # CONEXIÓN A LA BASE DE DATOS
