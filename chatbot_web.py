@@ -839,7 +839,7 @@ HTML = '''
 # FUNCIONES DEL BACKEND DEL CHATBOT
 # =============================================
 
-BACKEND_URL = "http://localhost:5000/api"
+BACKEND_URL = "https://chatbot-penia.onrender.com/api"
 
 def verificar_telefono(telefono):
     try:
