@@ -73,7 +73,7 @@ def get_partido_id(nombre_equipo):
     cursor = connection.cursor()
     query = """
         SELECT partidoID 
-        FROM Partido 
+        FROM partido 
         WHERE nombreEquipoVisitante LIKE %s 
           AND disponible = TRUE
         ORDER BY fecha DESC 
@@ -97,13 +97,13 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUt
     
     cursor = connection.cursor()
     
-    check_query = "SELECT * FROM ReservaPlazas WHERE partidoID = %s AND socioID = %s"
+    check_query = "SELECT * FROM reservaplazas WHERE partidoID = %s AND socioID = %s"
     cursor.execute(check_query, (partidoID, socioID))
     existe = cursor.fetchone()
     
     if existe:
         update_query = """
-            UPDATE ReservaPlazas 
+            UPDATE reservaplazas 
             SET plazaSocio = %s, num_plazas_NO_socio = %s, bonoUtilizado = %s
             WHERE partidoID = %s AND socioID = %s
         """
@@ -111,7 +111,7 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUt
         mensaje = "Reserva actualizada correctamente"
     else:
         insert_query = """
-            INSERT INTO ReservaPlazas (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado)
+            INSERT INTO reservaplazas (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado)
             VALUES (%s, %s, %s, %s, %s)
         """
         cursor.execute(insert_query, (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado))
@@ -177,7 +177,7 @@ def api_partidos_disponibles():
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
         SELECT partidoID, nombreEquipoVisitante, fecha, hora, temporada, tipoPartido
-        FROM Partido
+        FROM partido
         WHERE disponible = TRUE
         ORDER BY fecha
     """)
@@ -219,7 +219,7 @@ def api_reserva_existente():
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
         SELECT plazaSocio, num_plazas_NO_socio, bonoUtilizado
-        FROM ReservaPlazas
+        FROM reservaplazas
         WHERE socioID = %s AND partidoID = %s
     """, (socio_id, partido_id))
     reserva = cursor.fetchone()
@@ -304,7 +304,7 @@ def api_eliminar_reserva():
         result = cursor.fetchone()
         precio_socio = result[0] if result else 3
         
-        cursor.execute("SELECT plazaSocio, num_plazas_NO_socio FROM ReservaPlazas WHERE socioID = %s AND partidoID = %s", 
+        cursor.execute("SELECT plazaSocio, num_plazas_NO_socio FROM reservaplazas WHERE socioID = %s AND partidoID = %s", 
                       (socio_id, partido_id))
         reserva = cursor.fetchone()
         
@@ -316,7 +316,7 @@ def api_eliminar_reserva():
             
             cursor.execute("UPDATE Socio SET bolsa = bolsa - %s WHERE socioID = %s", (coste, socio_id))
     
-    cursor.execute("DELETE FROM ReservaPlazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
+    cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
     connection.commit()
     
     cursor.close()
@@ -352,8 +352,8 @@ def api_obtener_reserva(socio_id, partido_id):
             s.nombre,
             s.apellidos,
             s.tlf
-        FROM ReservaPlazas r
-        JOIN Partido p ON r.partidoID = p.partidoID
+        FROM reservaplazas r
+        JOIN partido p ON r.partidoID = p.partidoID
         JOIN Socio s ON r.socioID = s.socioID
         WHERE r.socioID = %s AND r.partidoID = %s
     """
