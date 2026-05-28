@@ -21,7 +21,7 @@ def get_db_connection():
         # Leer las variables de entorno (los valores que configuraste en Render)
         db_host = os.environ.get('DB_HOST', 'localhost')
         db_port = os.environ.get('DB_PORT', '3306')
-        db_name = os.environ.get('DB_NAME', 'mhdp')
+        db_name = os.environ.get('DB_NAME', 'defaultdb')
         db_user = os.environ.get('DB_USER', 'root')
         db_password = os.environ.get('DB_PASSWORD', '')
         
