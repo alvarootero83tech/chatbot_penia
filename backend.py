@@ -56,7 +56,7 @@ def get_socio_by_tlf(telefono):
         return None
     
     cursor = connection.cursor(dictionary=True)
-    query = "SELECT socioID, nombre, apellidos, bolsa FROM Socio WHERE tlf = %s"
+    query = "SELECT socioID, nombre, apellidos, bolsa FROM socio WHERE tlf = %s"
     cursor.execute(query, (telefono,))
     socio = cursor.fetchone()
     
