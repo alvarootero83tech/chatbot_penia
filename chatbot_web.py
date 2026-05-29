@@ -843,9 +843,14 @@ BACKEND_URL = "https://chatbot-penia.onrender.com/api"
 
 def verificar_telefono(telefono):
     try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=5)
+        url = f"{BACKEND_URL}/verificar_socio"
+        print(f"🔍 Llamando a: {url}")
+        response = requests.post(url, json={'telefono': telefono}, timeout=5)
+        print(f"🔍 Status code: {response.status_code}")
+        print(f"🔍 Respuesta: {response.text}")
         return response.json()
-    except:
+    except Exception as e:
+        print(f"❌ Error en verificar_telefono: {e}")
         return {'success': False, 'message': 'Error de conexión'}
 
 def obtener_partidos_disponibles():
