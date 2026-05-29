@@ -135,7 +135,7 @@ def get_precios():
         return None, None
     
     cursor = connection.cursor()
-    cursor.execute("SELECT precioSocio, precioNoSocio FROM Auxiliar WHERE id = 1")
+    cursor.execute("SELECT precioSocio, precioNoSocio FROM auxiliar WHERE id = 1")
     result = cursor.fetchone()
     
     cursor.close()
@@ -303,7 +303,7 @@ def api_eliminar_reserva():
     cursor = connection.cursor()
     
     if bono_utilizado:
-        cursor.execute("SELECT precioSocio FROM Auxiliar WHERE id = 1")
+        cursor.execute("SELECT precioSocio FROM auxiliar WHERE id = 1")
         result = cursor.fetchone()
         precio_socio = result[0] if result else 3
         
@@ -317,7 +317,7 @@ def api_eliminar_reserva():
                 coste += precio_socio
             coste += reserva[1] * 10
             
-            cursor.execute("UPDATE Socio SET bolsa = bolsa - %s WHERE socioID = %s", (coste, socio_id))
+            cursor.execute("UPDATE socio SET bolsa = bolsa - %s WHERE socioID = %s", (coste, socio_id))
     
     cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
     connection.commit()
@@ -357,7 +357,7 @@ def api_obtener_reserva(socio_id, partido_id):
             s.tlf
         FROM reservaplazas r
         JOIN partido p ON r.partidoID = p.partidoID
-        JOIN Socio s ON r.socioID = s.socioID
+        JOIN socio s ON r.socioID = s.socioID
         WHERE r.socioID = %s AND r.partidoID = %s
     """
     cursor.execute(query, (socio_id, partido_id))
