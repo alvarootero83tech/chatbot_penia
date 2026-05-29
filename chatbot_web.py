@@ -152,9 +152,14 @@ HTML = '''
             border: none;
             border-radius: 20px;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
-        .chat-input button:hover {
+        .chat-input button:hover:not(:disabled) {
             background-color: #2a7db5;
+        }
+        .chat-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
         h1 {
             text-align: center;
@@ -174,7 +179,7 @@ HTML = '''
         </div>
         <div class="chat-input">
             <input type="text" id="messageInput" placeholder="Escribe tu mensaje aquí...">
-            <button id="btnEnviar">Enviar</button>
+            <button id="btnEnviar" disabled>Enviar</button>
         </div>
     </div>
 
@@ -191,6 +196,13 @@ HTML = '''
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
+        }
+    }
+    
+    function habilitarBotonEnviar(habilitado) {
+        const btn = document.getElementById('btnEnviar');
+        if (btn) {
+            btn.disabled = !habilitado;
         }
     }
     
@@ -247,6 +259,9 @@ HTML = '''
         const input = document.getElementById('messageInput');
         const texto = input.value.trim();
         if (!texto) return;
+        
+        // Deshabilitar botón mientras se procesa
+        habilitarBotonEnviar(false);
         
         if (!sessionId) {
             sessionId = generarSessionId();
@@ -315,6 +330,7 @@ HTML = '''
 
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
             } 
             else if (data.tipo === 'formulario_reserva') {
                 botMsg.innerHTML = data.mensaje;
@@ -352,10 +368,16 @@ HTML = '''
                         enviarReserva(data.partido_id, asiste, invitados);
                     };
                 }
+                habilitarBotonEnviar(false);
             }
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
+                if (data.mensaje && (data.mensaje.includes('Número no registrado') || data.mensaje.includes('intenta con otro número'))) {
+                    habilitarBotonEnviar(true);
+                } else {
+                    habilitarBotonEnviar(false);
+                }
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -365,6 +387,7 @@ HTML = '''
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
             document.getElementById('chatMessages').appendChild(botMsg);
+            habilitarBotonEnviar(true);
         });
     }
     
@@ -415,6 +438,7 @@ HTML = '''
                 enviarModificacion(partidoId, asiste, invitados);
             };
         }
+        habilitarBotonEnviar(false);
     }
     
     function seleccionarPartido(partidoId, partidoNombre) {
@@ -471,6 +495,7 @@ HTML = '''
                 
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
             }
             else if (data.tipo === 'formulario_modificar') {
                 mostrarFormularioModificacion(data.partido_id, data.asiste, data.invitados);
@@ -512,10 +537,12 @@ HTML = '''
                         enviarReserva(data.partido_id, asiste, invitados);
                     };
                 }
+                habilitarBotonEnviar(false);
             }
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -579,10 +606,12 @@ HTML = '''
             botMsg.appendChild(optionsDiv);
             chatMessages.appendChild(botMsg);
             partidoSeleccionado = null;
+            habilitarBotonEnviar(false);
         } 
         else {
             botMsg.innerHTML = data.mensaje;
             chatMessages.appendChild(botMsg);
+            habilitarBotonEnviar(false);
         }
         
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -630,6 +659,12 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
+            
+            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
+                habilitarBotonEnviar(true);
+            } else {
+                habilitarBotonEnviar(false);
+            }
         })
         .catch(error => {
             const loading = document.getElementById('loading_msg');
@@ -640,6 +675,7 @@ HTML = '''
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            habilitarBotonEnviar(true);
         });
     }
     
@@ -687,6 +723,12 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
+            
+            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
+                habilitarBotonEnviar(true);
+            } else {
+                habilitarBotonEnviar(false);
+            }
         })
         .catch(error => {
             const loading = document.getElementById('loading_msg');
@@ -697,6 +739,7 @@ HTML = '''
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            habilitarBotonEnviar(true);
         });
     }
     
@@ -741,10 +784,12 @@ HTML = '''
                 // Reiniciar variables de sesión
                 sessionId = null;
                 partidoSeleccionado = null;
+                habilitarBotonEnviar(true);
             }, 2000);
         } else {
             botMsg.innerHTML = '❌ ' + data.message;
             chatMessages.appendChild(botMsg);
+            habilitarBotonEnviar(true);
         }
         
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -758,6 +803,7 @@ HTML = '''
         botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
         chatMessages.appendChild(botMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        habilitarBotonEnviar(true);
     });
         }
     
@@ -798,6 +844,12 @@ HTML = '''
         chatMessages.appendChild(botMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         partidoSeleccionado = null;
+        
+        if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
+            habilitarBotonEnviar(true);
+        } else {
+            habilitarBotonEnviar(false);
+        }
     })
     .catch(error => {
         const loading = document.getElementById('loading_msg');
@@ -808,6 +860,7 @@ HTML = '''
         botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
         chatMessages.appendChild(botMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        habilitarBotonEnviar(true);
     });
     }
     
@@ -815,18 +868,25 @@ HTML = '''
         const input = document.getElementById('messageInput');
         const boton = document.getElementById('btnEnviar');
         
+        // Habilitar botón al inicio porque el bot ya pide el teléfono
+        habilitarBotonEnviar(true);
+        
         if (input) {
             input.addEventListener('keypress', function(event) {
                 if (event.keyCode === 13 || event.key === 'Enter') {
                     event.preventDefault();
-                    enviarMensaje();
+                    if (!boton.disabled) {
+                        enviarMensaje();
+                    }
                 }
             });
         }
         
         if (boton) {
             boton.addEventListener('click', function() {
-                enviarMensaje();
+                if (!boton.disabled) {
+                    enviarMensaje();
+                }
             });
         }
     });
