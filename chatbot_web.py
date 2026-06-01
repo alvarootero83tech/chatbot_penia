@@ -905,7 +905,7 @@ def verificar_telefono(telefono):
     try:
         url = f"{BACKEND_URL}/verificar_socio"
         print(f"🔍 Llamando a: {url}")
-        response = requests.post(url, json={'telefono': telefono}, timeout=5)
+        response = requests.post(url, json={'telefono': telefono}, timeout=30)
         print(f"🔍 Status code: {response.status_code}")
         print(f"🔍 Respuesta: {response.text}")
         return response.json()
@@ -915,14 +915,14 @@ def verificar_telefono(telefono):
 
 def obtener_partidos_disponibles():
     try:
-        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=5)
+        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=30)
         return response.json()
     except:
         return {'success': False, 'partidos': []}
 
 def obtener_reserva_existente(socio_id, partido_id):
     try:
-        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=5)
+        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=30)
         return response.json()
     except:
         return {'success': False, 'existe': False}
@@ -930,7 +930,7 @@ def obtener_reserva_existente(socio_id, partido_id):
 def obtener_detalles_reserva_api(socio_id, partido_id):
     """Obtiene los detalles de una reserva desde el endpoint del backend"""
     try:
-        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=5)
+        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=30)
         return response.json()
     except:
         return {'success': False, 'message': 'Error de conexión'}
@@ -938,7 +938,7 @@ def obtener_detalles_reserva_api(socio_id, partido_id):
 def crear_reserva(socio_id, partido_id, asiste, invitados):
     try:
         # Primero crear/modificar la reserva
-        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=5)
+        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=30)
         resultado = response.json()
         
         if resultado.get('success'):
@@ -980,7 +980,7 @@ def crear_reserva(socio_id, partido_id, asiste, invitados):
 def modificar_reserva(socio_id, partido_id, asiste, invitados):
     try:
         # Primero modificar la reserva
-        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=5)
+        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=30)
         resultado = response.json()
         
         if resultado.get('success'):
@@ -1022,7 +1022,7 @@ def modificar_reserva(socio_id, partido_id, asiste, invitados):
 
 def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=5)
+        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=30)
         return response.json()
     except:
         return {'success': False, 'message': 'Error de conexión'}
@@ -1031,7 +1031,7 @@ def eliminar_reserva(socio_id, partido_id, bono_utilizado):
 def consultar_bono(telefono):
     """Consulta los datos del socio (incluyendo bolsa) por teléfono"""
     try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=5)
+        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=30)
         return response.json()
     except:
         return {'success': False, 'message': 'Error de conexión'}
