@@ -88,13 +88,36 @@ def get_partido_id(nombre_equipo):
 # =============================================
 # FUNCIÓN: Insertar o actualizar reserva (con precioApagar )
 # =============================================
-def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado=False, precioApagar=0.00):
+def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado=False, usar_bolsa=False, precioApagar=0.00):
     connection = get_db_connection()
     if connection is None:
         return False, "Error de conexión a BD"
     
     cursor = connection.cursor()
     
+    # Calcular coste total de la reserva
+    coste_total = calcular_coste_total(plazaSocio, num_plazas_NO_socio)
+    
+    # Si se usa la bolsa, actualizar el saldo del socio
+    if usar_bolsa:
+        # Obtener saldo actual
+        cursor.execute("SELECT bolsa FROM socio WHERE socioID = %s", (socioID,))
+        result = cursor.fetchone()
+        saldo_actual = result[0] if result else 0
+        
+        if saldo_actual < coste_total:
+            cursor.close()
+            connection.close()
+            return False, f"Saldo insuficiente. Tienes {saldo_actual}€ y el coste es {coste_total}€"
+        
+        # Restar coste de la bolsa
+        nuevo_saldo = saldo_actual - coste_total
+        cursor.execute("UPDATE socio SET bolsa = %s WHERE socioID = %s", (nuevo_saldo, socioID))
+        precio_apagar = coste_total
+    else:
+        precio_apagar = 0.00
+    
+    # Verificar si existe reserva
     check_query = "SELECT * FROM reservaplazas WHERE partidoID = %s AND socioID = %s"
     cursor.execute(check_query, (partidoID, socioID))
     existe = cursor.fetchone()
@@ -105,21 +128,21 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUt
             SET plazaSocio = %s, num_plazas_NO_socio = %s, bonoUtilizado = %s, precioApagar = %s
             WHERE partidoID = %s AND socioID = %s
         """
-        cursor.execute(update_query, (plazaSocio, num_plazas_NO_socio, bonoUtilizado, precioApagar, partidoID, socioID))
+        cursor.execute(update_query, (plazaSocio, num_plazas_NO_socio, bonoUtilizado, precio_apagar, partidoID, socioID))
         mensaje = "Reserva actualizada correctamente"
     else:
         insert_query = """
-            INSERT INTO reservaplazas (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado, precioApagar )
+            INSERT INTO reservaplazas (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado, precioApagar)
             VALUES (%s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(insert_query, (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado, precioApagar))
+        cursor.execute(insert_query, (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado, precio_apagar))
         mensaje = "Reserva creada correctamente"
     
     connection.commit()
     cursor.close()
     connection.close()
     
-    return True, mensaje
+    return True, mensaje, coste_total, precio_apagar
 
 
 # =============================================
@@ -138,6 +161,18 @@ def get_precios():
     connection.close()
     
     return (result[0], result[1]) if result else (None, None)
+
+
+# =============================================
+# FUNCIÓN: Obtener coste total
+# =============================================
+def calcular_coste_total(plaza_socio, num_plazas_NO_socio):
+    precios = get_precios()
+    if precios is None:
+        return 0
+    precio_socio, precio_no_socio = precios
+    coste = (precio_socio if plaza_socio else 0) + (num_plazas_NO_socio * precio_no_socio)
+    return coste
 
 
 # ---------------------------------------------------- END POINTS DE APIs ------------------------------------------------------------------
@@ -251,15 +286,19 @@ def api_crear_reserva():
     partido_id = data.get('partido_id')
     plaza_socio = data.get('plaza_socio', False)
     num_plazas_NO_socio = data.get('num_plazas_NO_socio', 0)
-    cantidad_bono = data.get('cantidad_bono', 0.00)
+    usar_bolsa = data.get('usar_bolsa', False)
     
     if not socio_id or not partido_id:
         return jsonify({'success': False, 'message': 'Faltan datos'}), 400
     
-    exito, mensaje = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, False, cantidad_bono)
+    exito, mensaje, coste, pagado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, False, usar_bolsa)
     
     if exito:
-        return jsonify({'success': True, 'message': f'✅ {mensaje}'})
+        if usar_bolsa:
+            mensaje_adicional = f" Se descontaron {coste}€ de tu bolsa."
+        else:
+            mensaje_adicional = " No se utilizó saldo de la bolsa."
+        return jsonify({'success': True, 'message': f'✅ {mensaje}{mensaje_adicional}'})
     else:
         return jsonify({'success': False, 'message': mensaje}), 500
 
