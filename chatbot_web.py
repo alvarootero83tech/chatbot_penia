@@ -4,6 +4,7 @@ import re
 
 app = Flask(__name__)
 
+# Almacenamiento temporal de sesiones (en producción usar BD o Redis)
 sesiones = {}
 
 HTML = '''
@@ -259,6 +260,7 @@ HTML = '''
         const texto = input.value.trim();
         if (!texto) return;
         
+        // Deshabilitar botón mientras se procesa
         habilitarBotonEnviar(false);
         
         if (!sessionId) {
@@ -308,20 +310,22 @@ HTML = '''
                     optionsDiv.appendChild(btn);
                 });
 
-                const hr = document.createElement('hr');
-                hr.style.margin = '15px 0';
-                hr.style.border = 'none';
-                hr.style.borderTop = '1px solid #e8e4d8';
-                optionsDiv.appendChild(hr);
-                
-                const btnBono = document.createElement('button');
-                btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
-                btnBono.className = 'option-button';
-                btnBono.style.backgroundColor = '#27ae60';
-                btnBono.onclick = (e) => {
-                    deshabilitarBoton(btnBono);
-                    consultarBono();
-                };
+                // Línea separadora
+                    const hr = document.createElement('hr');
+                    hr.style.margin = '15px 0';
+                    hr.style.border = 'none';
+                    hr.style.borderTop = '1px solid #e8e4d8';
+                    optionsDiv.appendChild(hr);
+                    
+                    // Botón para consultar bono
+                    const btnBono = document.createElement('button');
+                    btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
+                    btnBono.className = 'option-button';
+                    btnBono.style.backgroundColor = '#27ae60';
+                    btnBono.onclick = (e) => {
+                        deshabilitarBoton(btnBono);
+                        consultarBono();
+                    };
                 optionsDiv.appendChild(btnBono);
 
                 botMsg.appendChild(optionsDiv);
@@ -344,18 +348,6 @@ HTML = '''
                 `;
                 formDiv.appendChild(checkboxDiv);
                 
-                if (data.bolsa_actual > 0) {
-                    const bolsaDiv = document.createElement('div');
-                    bolsaDiv.className = 'checkbox-group';
-                    bolsaDiv.innerHTML = `
-                        <label>
-                            <input type="checkbox" id="usarBolsaCheckbox">
-                            <span>💰 Usar saldo de la bolsa (${data.bolsa_actual}€ disponible)</span>
-                        </label>
-                    `;
-                    formDiv.appendChild(bolsaDiv);
-                }
-                
                 const inputDiv = document.createElement('div');
                 inputDiv.className = 'input-group';
                 inputDiv.innerHTML = `
@@ -373,8 +365,7 @@ HTML = '''
                         deshabilitarBoton(btn);
                         const asiste = document.getElementById('asisteCheckbox').checked;
                         const invitados = obtenerInvitados('invitadosInput');
-                        const usarBolsa = document.getElementById('usarBolsaCheckbox') ? document.getElementById('usarBolsaCheckbox').checked : false;
-                        enviarReserva(data.partido_id, asiste, invitados, usarBolsa);
+                        enviarReserva(data.partido_id, asiste, invitados);
                     };
                 }
                 habilitarBotonEnviar(false);
@@ -382,15 +373,16 @@ HTML = '''
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
-                // Habilitar botón después de cualquier mensaje que no sea de opciones o formulario
-                // Esto incluye errores de formato de teléfono, número no registrado, etc.
-                habilitarBotonEnviar(true);
+                if (data.mensaje && (data.mensaje.includes('Número no registrado') || data.mensaje.includes('intenta con otro número'))) {
+                    habilitarBotonEnviar(true);
+                } else {
+                    habilitarBotonEnviar(false);
+                }
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
         })
         .catch(error => {
-            console.error(error);
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
@@ -399,7 +391,7 @@ HTML = '''
         });
     }
     
-    function mostrarFormularioModificacion(partidoId, asisteActual, invitadosActual, bolsaActual) {
+    function mostrarFormularioModificacion(partidoId, asisteActual, invitadosActual) {
         limpiarMensajesYFormularios();
         
         if (invitadosActual === null || invitadosActual === undefined) {
@@ -425,18 +417,6 @@ HTML = '''
         `;
         formDiv.appendChild(checkboxDiv);
         
-        if (bolsaActual > 0) {
-            const bolsaDiv = document.createElement('div');
-            bolsaDiv.className = 'checkbox-group';
-            bolsaDiv.innerHTML = `
-                <label>
-                    <input type="checkbox" id="usarBolsaCheckboxMod">
-                    <span>💰 Usar saldo de la bolsa (${bolsaActual}€ disponible)</span>
-                </label>
-            `;
-            formDiv.appendChild(bolsaDiv);
-        }
-        
         const inputDiv = document.createElement('div');
         inputDiv.className = 'input-group';
         inputDiv.innerHTML = `
@@ -455,8 +435,7 @@ HTML = '''
                 deshabilitarBoton(btn);
                 const asiste = document.getElementById('asisteCheckboxMod').checked;
                 const invitados = obtenerInvitados('invitadosInputMod');
-                const usarBolsa = document.getElementById('usarBolsaCheckboxMod') ? document.getElementById('usarBolsaCheckboxMod').checked : false;
-                enviarModificacion(partidoId, asiste, invitados, usarBolsa);
+                enviarModificacion(partidoId, asiste, invitados);
             };
         }
         habilitarBotonEnviar(false);
@@ -506,7 +485,7 @@ HTML = '''
                         if (op.valor === 'cancelar') {
                             enviarConfirmacionEliminar(data.partido_id, data.bono_utilizado);
                         } else if (op.valor === 'modificar') {
-                            mostrarFormularioModificacion(data.partido_id, data.asiste_actual, data.invitados_actual, data.bolsa_actual);
+                            mostrarFormularioModificacion(data.partido_id, data.asiste_actual, data.invitados_actual);
                         } else if (op.valor === 'salir') {
                             enviarRespuestaOpcion('menu_principal');
                         }
@@ -519,7 +498,7 @@ HTML = '''
                 habilitarBotonEnviar(false);
             }
             else if (data.tipo === 'formulario_modificar') {
-                mostrarFormularioModificacion(data.partido_id, data.asiste, data.invitados, data.bolsa_actual);
+                mostrarFormularioModificacion(data.partido_id, data.asiste, data.invitados);
                 return;
             }
             else if (data.tipo === 'formulario_reserva') {
@@ -538,18 +517,6 @@ HTML = '''
                 `;
                 formDiv.appendChild(checkboxDiv);
                 
-                if (data.bolsa_actual > 0) {
-                    const bolsaDiv = document.createElement('div');
-                    bolsaDiv.className = 'checkbox-group';
-                    bolsaDiv.innerHTML = `
-                        <label>
-                            <input type="checkbox" id="usarBolsaCheckbox">
-                            <span>💰 Usar saldo de la bolsa (${data.bolsa_actual}€ disponible)</span>
-                        </label>
-                    `;
-                    formDiv.appendChild(bolsaDiv);
-                }
-                
                 const inputDiv = document.createElement('div');
                 inputDiv.className = 'input-group';
                 inputDiv.innerHTML = `
@@ -567,8 +534,7 @@ HTML = '''
                         deshabilitarBoton(btn);
                         const asiste = document.getElementById('asisteCheckbox').checked;
                         const invitados = obtenerInvitados('invitadosInput');
-                        const usarBolsa = document.getElementById('usarBolsaCheckbox') ? document.getElementById('usarBolsaCheckbox').checked : false;
-                        enviarReserva(data.partido_id, asiste, invitados, usarBolsa);
+                        enviarReserva(data.partido_id, asiste, invitados);
                     };
                 }
                 habilitarBotonEnviar(false);
@@ -576,7 +542,7 @@ HTML = '''
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
-                habilitarBotonEnviar(true);
+                habilitarBotonEnviar(false);
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -584,72 +550,75 @@ HTML = '''
     }
     
     function enviarRespuestaOpcion(valor) {
-        fetch('/api/opcion', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                opcion: valor,
-                session_id: sessionId
-            })
+    fetch('/api/opcion', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            opcion: valor,
+            session_id: sessionId
         })
-        .then(response => response.json())
-        .then(data => {
-            limpiarMensajesYFormularios();
+    })
+    .then(response => response.json())
+    .then(data => {
+        limpiarMensajesYFormularios();
+        
+        const chatMessages = document.getElementById('chatMessages');
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        
+        if (data.tipo === 'opciones') {
+            botMsg.innerHTML = data.mensaje;
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options-container';
+            optionsDiv.id = 'opciones_partidos';
             
-            const chatMessages = document.getElementById('chatMessages');
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            
-            if (data.tipo === 'opciones') {
-                botMsg.innerHTML = data.mensaje;
-                const optionsDiv = document.createElement('div');
-                optionsDiv.className = 'options-container';
-                optionsDiv.id = 'opciones_partidos';
-                
-                data.opciones.forEach(op => {
-                    const btn = document.createElement('button');
-                    btn.textContent = op.texto;
-                    btn.className = 'option-button';
-                    btn.dataset.partidoId = op.partido_id;
-                    btn.onclick = (e) => {
-                        deshabilitarBoton(btn);
-                        seleccionarPartido(op.partido_id, op.texto);
-                    };
-                    optionsDiv.appendChild(btn);
-                });
-                
-                const hr = document.createElement('hr');
-                hr.style.margin = '15px 0';
-                hr.style.border = 'none';
-                hr.style.borderTop = '1px solid #e8e4d8';
-                optionsDiv.appendChild(hr);
-                
-                const btnBono = document.createElement('button');
-                btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
-                btnBono.className = 'option-button';
-                btnBono.style.backgroundColor = '#27ae60';
-                btnBono.onclick = (e) => {
-                    deshabilitarBoton(btnBono);
-                    consultarBono();
+            // Botones de partidos
+            data.opciones.forEach(op => {
+                const btn = document.createElement('button');
+                btn.textContent = op.texto;
+                btn.className = 'option-button';
+                btn.dataset.partidoId = op.partido_id;
+                btn.onclick = (e) => {
+                    deshabilitarBoton(btn);
+                    seleccionarPartido(op.partido_id, op.texto);
                 };
-                optionsDiv.appendChild(btnBono);
-                
-                botMsg.appendChild(optionsDiv);
-                chatMessages.appendChild(botMsg);
-                partidoSeleccionado = null;
-                habilitarBotonEnviar(false);
-            } 
-            else {
-                botMsg.innerHTML = data.mensaje;
-                chatMessages.appendChild(botMsg);
-                habilitarBotonEnviar(true);
-            }
+                optionsDiv.appendChild(btn);
+            });
             
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        });
+            // Línea separadora
+            const hr = document.createElement('hr');
+            hr.style.margin = '15px 0';
+            hr.style.border = 'none';
+            hr.style.borderTop = '1px solid #e8e4d8';
+            optionsDiv.appendChild(hr);
+            
+            // Botón para consultar bono
+            const btnBono = document.createElement('button');
+            btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
+            btnBono.className = 'option-button';
+            btnBono.style.backgroundColor = '#27ae60';
+            btnBono.onclick = (e) => {
+                deshabilitarBoton(btnBono);
+                consultarBono();
+            };
+            optionsDiv.appendChild(btnBono);
+            
+            botMsg.appendChild(optionsDiv);
+            chatMessages.appendChild(botMsg);
+            partidoSeleccionado = null;
+            habilitarBotonEnviar(false);
+        } 
+        else {
+            botMsg.innerHTML = data.mensaje;
+            chatMessages.appendChild(botMsg);
+            habilitarBotonEnviar(false);
+        }
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
     }
     
-    function enviarReserva(partidoId, asiste, invitados, usarBolsa) {
+    function enviarReserva(partidoId, asiste, invitados) {
         const chatMessages = document.getElementById('chatMessages');
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'message bot-message';
@@ -658,14 +627,13 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch('/api/crear_reserva', {
+        fetch('/api/confirmar_reserva', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 partido_id: partidoId,
                 asiste: asiste,
                 invitados: invitados,
-                usar_bolsa: usarBolsa,
                 session_id: sessionId
             })
         })
@@ -699,9 +667,9 @@ HTML = '''
             }
         })
         .catch(error => {
-            console.error(error);
             const loading = document.getElementById('loading_msg');
             if (loading) loading.remove();
+            
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
@@ -711,7 +679,7 @@ HTML = '''
         });
     }
     
-    function enviarModificacion(partidoId, asiste, invitados, usarBolsa) {
+    function enviarModificacion(partidoId, asiste, invitados) {
         const chatMessages = document.getElementById('chatMessages');
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'message bot-message';
@@ -727,7 +695,6 @@ HTML = '''
                 partido_id: partidoId,
                 asiste: asiste,
                 invitados: invitados,
-                usar_bolsa: usarBolsa,
                 session_id: sessionId
             })
         })
@@ -738,6 +705,7 @@ HTML = '''
             
             const formulario = document.getElementById('formulario_modificacion');
             if (formulario) formulario.remove();
+            
             const formularioReserva = document.getElementById('formulario_reserva');
             if (formularioReserva) formularioReserva.remove();
             
@@ -763,9 +731,9 @@ HTML = '''
             }
         })
         .catch(error => {
-            console.error(error);
             const loading = document.getElementById('loading_msg');
             if (loading) loading.remove();
+            
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
@@ -776,111 +744,131 @@ HTML = '''
     }
     
     function consultarBono() {
-        const chatMessages = document.getElementById('chatMessages');
-        const loadingMsg = document.createElement('div');
-        loadingMsg.className = 'message bot-message';
-        loadingMsg.innerHTML = '⏳ Consultando tu bono...';
-        loadingMsg.id = 'loading_msg';
-        chatMessages.appendChild(loadingMsg);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        
-        fetch('/api/consultar_bono', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ session_id: sessionId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            limpiarMensajesYFormularios();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            if (data.success) {
-                botMsg.innerHTML = data.message;
-                chatMessages.appendChild(botMsg);
-                setTimeout(() => {
-                    const reinicioMsg = document.createElement('div');
-                    reinicioMsg.className = 'message bot-message';
-                    reinicioMsg.innerHTML = '🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
-                    chatMessages.appendChild(reinicioMsg);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    sessionId = null;
-                    partidoSeleccionado = null;
-                    habilitarBotonEnviar(true);
-                }, 2000);
-            } else {
-                botMsg.innerHTML = '❌ ' + data.message;
-                chatMessages.appendChild(botMsg);
-                habilitarBotonEnviar(true);
-            }
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        })
-        .catch(error => {
-            console.error(error);
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
-            chatMessages.appendChild(botMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            habilitarBotonEnviar(true);
-        });
-    }
+    const chatMessages = document.getElementById('chatMessages');
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'message bot-message';
+    loadingMsg.innerHTML = '⏳ Consultando tu bono...';
+    loadingMsg.id = 'loading_msg';
+    chatMessages.appendChild(loadingMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
     
-    function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
-        const chatMessages = document.getElementById('chatMessages');
-        limpiarMensajesYFormularios();
-        const loadingMsg = document.createElement('div');
-        loadingMsg.className = 'message bot-message';
-        loadingMsg.innerHTML = '⏳ Procesando cancelación...';
-        loadingMsg.id = 'loading_msg';
-        chatMessages.appendChild(loadingMsg);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    fetch('/api/consultar_bono', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
         
-        fetch('/api/eliminar_reserva', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                partido_id: partidoId,
-                bono_utilizado: bonoUtilizado,
-                session_id: sessionId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            limpiarMensajesYFormularios();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = data.mensaje;
+        limpiarMensajesYFormularios();
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        
+        if (data.success) {
+            botMsg.innerHTML = data.message;
             chatMessages.appendChild(botMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            partidoSeleccionado = null;
-            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
+            
+            // Después de mostrar la información, reiniciar la sesión
+            setTimeout(() => {
+                const reinicioMsg = document.createElement('div');
+                reinicioMsg.className = 'message bot-message';
+                reinicioMsg.innerHTML = '🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+                chatMessages.appendChild(reinicioMsg);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Reiniciar variables de sesión
+                sessionId = null;
+                partidoSeleccionado = null;
                 habilitarBotonEnviar(true);
-            } else {
-                habilitarBotonEnviar(false);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
+            }, 2000);
+        } else {
+            botMsg.innerHTML = '❌ ' + data.message;
             chatMessages.appendChild(botMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
             habilitarBotonEnviar(true);
-        });
+        }
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    })
+    .catch(error => {
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
+        chatMessages.appendChild(botMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        habilitarBotonEnviar(true);
+    });
+        }
+    
+
+    function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    // Limpiar mensajes y formularios anteriores
+    limpiarMensajesYFormularios();
+    
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'message bot-message';
+    loadingMsg.innerHTML = '⏳ Procesando cancelación...';
+    loadingMsg.id = 'loading_msg';
+    chatMessages.appendChild(loadingMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    fetch('/api/eliminar_reserva', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            partido_id: partidoId,
+            bono_utilizado: bonoUtilizado,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
+        
+        // Volver a limpiar después de la respuesta (por si acaso)
+        limpiarMensajesYFormularios();
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = data.mensaje;
+        chatMessages.appendChild(botMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        partidoSeleccionado = null;
+        
+        if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
+            habilitarBotonEnviar(true);
+        } else {
+            habilitarBotonEnviar(false);
+        }
+    })
+    .catch(error => {
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
+        chatMessages.appendChild(botMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        habilitarBotonEnviar(true);
+    });
     }
     
     document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('messageInput');
         const boton = document.getElementById('btnEnviar');
+        
+        // Habilitar botón al inicio porque el bot ya pide el teléfono
         habilitarBotonEnviar(true);
         
         if (input) {
@@ -917,7 +905,7 @@ def verificar_telefono(telefono):
     try:
         url = f"{BACKEND_URL}/verificar_socio"
         print(f"🔍 Llamando a: {url}")
-        response = requests.post(url, json={'telefono': telefono}, timeout=90)
+        response = requests.post(url, json={'telefono': telefono}, timeout=30)
         print(f"🔍 Status code: {response.status_code}")
         print(f"🔍 Respuesta: {response.text}")
         return response.json()
@@ -927,39 +915,43 @@ def verificar_telefono(telefono):
 
 def obtener_partidos_disponibles():
     try:
-        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=90)
+        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=30)
         return response.json()
-    except Exception as e:
-        print(f"❌ Error en obtener_partidos_disponibles: {e}")
+    except:
         return {'success': False, 'partidos': []}
 
 def obtener_reserva_existente(socio_id, partido_id):
     try:
-        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=90)
+        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=30)
         return response.json()
-    except Exception as e:
-        print(f"❌ Error en obtener_reserva_existente: {e}")
+    except:
         return {'success': False, 'existe': False}
 
 def obtener_detalles_reserva_api(socio_id, partido_id):
+    """Obtiene los detalles de una reserva desde el endpoint del backend"""
     try:
-        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=90)
+        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=30)
         return response.json()
-    except Exception as e:
-        print(f"❌ Error en obtener_detalles_reserva_api: {e}")
+    except:
         return {'success': False, 'message': 'Error de conexión'}
 
 def crear_reserva(socio_id, partido_id, asiste, invitados):
     try:
-        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=90)
+        # Primero crear/modificar la reserva
+        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=30)
         resultado = response.json()
+        
         if resultado.get('success'):
+            # Luego obtener los detalles de la reserva recién creada
             detalles = obtener_detalles_reserva_api(socio_id, partido_id)
+            
             if detalles.get('success'):
                 reserva = detalles.get('reserva', {})
                 partido = reserva.get('partido', {})
                 socio = reserva.get('socio', {})
+                
                 asiste_texto = "✅ Sí" if reserva.get('plaza_socio') else "❌ No"
+                
                 mensaje_detallado = f"""
 ✅ Reserva creada correctamente
 
@@ -977,25 +969,31 @@ def crear_reserva(socio_id, partido_id, asiste, invitados):
 👥 Número de NO socios: {reserva.get('num_plazas_no_socio', 0)}
 💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
 ━━━━━━━━━
+
 """
                 return {'success': True, 'message': mensaje_detallado}
         else:
             return {'success': False, 'message': resultado.get('message', 'Error al crear la reserva')}
-    except Exception as e:
-        print(f"❌ Error en crear_reserva: {e}")
+    except:
         return {'success': False, 'message': 'Error de conexión'}
 
 def modificar_reserva(socio_id, partido_id, asiste, invitados):
     try:
-        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=90)
+        # Primero modificar la reserva
+        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=30)
         resultado = response.json()
+        
         if resultado.get('success'):
+            # Luego obtener los detalles de la reserva modificada
             detalles = obtener_detalles_reserva_api(socio_id, partido_id)
+            
             if detalles.get('success'):
                 reserva = detalles.get('reserva', {})
                 partido = reserva.get('partido', {})
                 socio = reserva.get('socio', {})
+                
                 asiste_texto = "✅ Sí" if reserva.get('plaza_socio') else "❌ No"
+                
                 mensaje_detallado = f"""
 ✅ Reserva modificada correctamente
 
@@ -1013,29 +1011,32 @@ def modificar_reserva(socio_id, partido_id, asiste, invitados):
 👥 Número de NO socios: {reserva.get('num_plazas_no_socio', 0)}
 💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
 ━━━━━━━━━
+
 """
                 return {'success': True, 'message': mensaje_detallado}
+            
         else:
             return {'success': False, 'message': resultado.get('message', 'Error al modificar la reserva')}
-    except Exception as e:
-        print(f"❌ Error en modificar_reserva: {e}")
+    except:
         return {'success': False, 'message': 'Error de conexión'}
 
 def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=90)
+        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=30)
         return response.json()
-    except Exception as e:
-        print(f"❌ Error en eliminar_reserva: {e}")
+    except:
         return {'success': False, 'message': 'Error de conexión'}
 
+
 def consultar_bono(telefono):
+    """Consulta los datos del socio (incluyendo bolsa) por teléfono"""
     try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=90)
+        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=30)
         return response.json()
-    except Exception as e:
-        print(f"❌ Error en consultar_bono: {e}")
+    except:
         return {'success': False, 'message': 'Error de conexión'}
+    
+
 
 # =============================================
 # RUTAS DE FLASK
@@ -1060,12 +1061,15 @@ def chat():
         if re.match(r'^\+?[0-9]{9,15}$', texto.strip()):
             telefono = texto.strip()
             resultado = verificar_telefono(telefono)
+            
             if resultado.get('success'):
                 sesion['paso'] = 'telefono_validado'
                 sesion['socio_id'] = resultado['socio_id']
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
+                
                 partidos = obtener_partidos_disponibles()
+                
                 if partidos.get('success') and partidos.get('partidos'):
                     opciones = []
                     for p in partidos['partidos']:
@@ -1074,6 +1078,7 @@ def chat():
                             'valor': f"partido_{p['partidoID']}",
                             'partido_id': p['partidoID']
                         })
+                    
                     return jsonify({
                         'tipo': 'opciones',
                         'mensaje': f"✅ Teléfono validado. ¡Bienvenido {resultado['nombre']}! 📞\n\nSelecciona el partido para el que quieres reservar:",
@@ -1094,6 +1099,7 @@ def chat():
                 'tipo': 'mensaje',
                 'mensaje': '📞 Por favor, ingresa un número de teléfono válido con formato internacional.\nEjemplo: +34123456789'
             })
+    
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Comando no reconocido.'})
 
 @app.route('/api/opcion', methods=['POST'])
@@ -1111,19 +1117,13 @@ def opcion():
         partido_id = int(opcion.split('_')[1])
         sesion['partido_seleccionado'] = partido_id
         
-        # Obtener reserva existente (ya incluye bolsa_actual si se modifica backend, pero no)
-        # Como no tenemos bolsa_actual en reserva_existente, hacemos una petición extra
         reserva = obtener_reserva_existente(sesion['socio_id'], partido_id)
-        # Obtener saldo actual
-        try:
-            socio_data = verificar_telefono(sesion['telefono'])
-            bolsa_actual = socio_data.get('bolsa', 0) if socio_data.get('success') else 0
-        except:
-            bolsa_actual = 0
         
         if reserva.get('existe'):
             sesion['paso'] = 'reserva_existente'
             sesion['reserva_actual'] = reserva
+            sesion['partido_seleccionado'] = partido_id
+            
             return jsonify({
                 'tipo': 'opciones_reserva_existente',
                 'mensaje': f"⚠️ Ya tienes una reserva para este partido.\n\n📋 Reserva actual:\n• Asistes: {'✅ Sí' if reserva.get('plaza_socio') else '❌ No'}\n• Invitados: {reserva.get('num_invitados', 0)}\n• Bono utilizado: {'✅ Sí' if reserva.get('bono_utilizado') else '❌ No'}\n\n¿Qué deseas hacer?",
@@ -1131,7 +1131,6 @@ def opcion():
                 'bono_utilizado': reserva.get('bono_utilizado', False),
                 'asiste_actual': reserva.get('plaza_socio', False),
                 'invitados_actual': reserva.get('num_invitados', 0),
-                'bolsa_actual': bolsa_actual,
                 'opciones': [
                     {'texto': '❌ Cancelar reserva', 'valor': 'cancelar'},
                     {'texto': '✏️ Modificar reserva', 'valor': 'modificar'},
@@ -1146,11 +1145,11 @@ def opcion():
                 if p['partidoID'] == partido_id:
                     partido_nombre = p['nombreEquipoVisitante']
                     break
+            
             return jsonify({
                 'tipo': 'formulario_reserva',
                 'mensaje': f"⚽ Reserva para: {partido_nombre}\n\nIndica los detalles de tu reserva:",
-                'partido_id': partido_id,
-                'bolsa_actual': bolsa_actual
+                'partido_id': partido_id
             })
     
     elif opcion == 'menu_principal':
@@ -1163,6 +1162,7 @@ def opcion():
                     'valor': f"partido_{p['partidoID']}",
                     'partido_id': p['partidoID']
                 })
+            
             return jsonify({
                 'tipo': 'opciones',
                 'mensaje': "Selecciona el partido para el que quieres reservar:",
@@ -1178,14 +1178,19 @@ def confirmar_reserva():
     partido_id = data.get('partido_id')
     asiste = data.get('asiste', False)
     invitados = data.get('invitados', 0)
+    
     try:
         invitados = max(0, min(int(invitados), 999))
     except:
         invitados = 0
+    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
+    
     sesion = sesiones[session_id]
+    
     resultado = crear_reserva(sesion['socio_id'], partido_id, asiste, invitados)
+    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva creada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
@@ -1199,14 +1204,19 @@ def modificar_reserva_route():
     partido_id = data.get('partido_id')
     asiste = data.get('asiste', False)
     invitados = data.get('invitados', 0)
+    
     try:
         invitados = max(0, min(int(invitados), 999))
     except:
         invitados = 0
+    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
+    
     sesion = sesiones[session_id]
+    
     resultado = modificar_reserva(sesion['socio_id'], partido_id, asiste, invitados)
+    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva modificada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
@@ -1219,27 +1229,37 @@ def eliminar_reserva_route():
     session_id = data.get('session_id', '')
     partido_id = data.get('partido_id')
     bono_utilizado = data.get('bono_utilizado', False)
+    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
+    
     sesion = sesiones[session_id]
+    
     resultado = eliminar_reserva(sesion['socio_id'], partido_id, bono_utilizado)
+    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva cancelada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
     else:
         return jsonify({'mensaje': f'❌ Error: {resultado.get("message", "No se pudo cancelar la reserva")}'})
 
+
 @app.route('/api/consultar_bono', methods=['POST'])
 def api_consultar_bono():
     data = request.get_json()
     session_id = data.get('session_id', '')
+    
     if session_id not in sesiones:
-        return jsonify({'success': False, 'message': 'Sesión no válida'})
+        return jsonify({'success': False, 'message': 'Sesión no válida. Por favor, reinicia el chat.'})
+    
     sesion = sesiones[session_id]
     telefono = sesion.get('telefono')
+    
     if not telefono:
-        return jsonify({'success': False, 'message': 'No hay teléfono registrado'})
+        return jsonify({'success': False, 'message': 'No hay teléfono registrado. Por favor, ingresa tu número de teléfono primero.'})
+    
     resultado = consultar_bono(telefono)
+    
     if resultado.get('success'):
         mensaje = f"""
 📋 INFORMACIÓN DE TU BONO:
@@ -1253,6 +1273,7 @@ def api_consultar_bono():
         return jsonify({'success': True, 'message': mensaje})
     else:
         return jsonify({'success': False, 'message': resultado.get('message', 'Error al consultar el bono')})
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
