@@ -382,11 +382,9 @@ HTML = '''
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
-                if (data.mensaje && (data.mensaje.includes('Número no registrado') || data.mensaje.includes('intenta con otro número'))) {
-                    habilitarBotonEnviar(true);
-                } else {
-                    habilitarBotonEnviar(false);
-                }
+                // Habilitar botón después de cualquier mensaje que no sea de opciones o formulario
+                // Esto incluye errores de formato de teléfono, número no registrado, etc.
+                habilitarBotonEnviar(true);
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -578,7 +576,7 @@ HTML = '''
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
-                habilitarBotonEnviar(false);
+                habilitarBotonEnviar(true);
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -644,7 +642,7 @@ HTML = '''
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
-                habilitarBotonEnviar(false);
+                habilitarBotonEnviar(true);
             }
             
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -919,7 +917,7 @@ def verificar_telefono(telefono):
     try:
         url = f"{BACKEND_URL}/verificar_socio"
         print(f"🔍 Llamando a: {url}")
-        response = requests.post(url, json={'telefono': telefono}, timeout=60)
+        response = requests.post(url, json={'telefono': telefono}, timeout=90)
         print(f"🔍 Status code: {response.status_code}")
         print(f"🔍 Respuesta: {response.text}")
         return response.json()
@@ -929,7 +927,7 @@ def verificar_telefono(telefono):
 
 def obtener_partidos_disponibles():
     try:
-        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=60)
+        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=90)
         return response.json()
     except Exception as e:
         print(f"❌ Error en obtener_partidos_disponibles: {e}")
@@ -937,7 +935,7 @@ def obtener_partidos_disponibles():
 
 def obtener_reserva_existente(socio_id, partido_id):
     try:
-        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=90)
         return response.json()
     except Exception as e:
         print(f"❌ Error en obtener_reserva_existente: {e}")
@@ -945,7 +943,7 @@ def obtener_reserva_existente(socio_id, partido_id):
 
 def obtener_detalles_reserva_api(socio_id, partido_id):
     try:
-        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=60)
+        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=90)
         return response.json()
     except Exception as e:
         print(f"❌ Error en obtener_detalles_reserva_api: {e}")
@@ -953,7 +951,7 @@ def obtener_detalles_reserva_api(socio_id, partido_id):
 
 def crear_reserva(socio_id, partido_id, asiste, invitados):
     try:
-        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=90)
         resultado = response.json()
         if resultado.get('success'):
             detalles = obtener_detalles_reserva_api(socio_id, partido_id)
@@ -989,7 +987,7 @@ def crear_reserva(socio_id, partido_id, asiste, invitados):
 
 def modificar_reserva(socio_id, partido_id, asiste, invitados):
     try:
-        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=90)
         resultado = response.json()
         if resultado.get('success'):
             detalles = obtener_detalles_reserva_api(socio_id, partido_id)
@@ -1025,7 +1023,7 @@ def modificar_reserva(socio_id, partido_id, asiste, invitados):
 
 def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=90)
         return response.json()
     except Exception as e:
         print(f"❌ Error en eliminar_reserva: {e}")
@@ -1033,7 +1031,7 @@ def eliminar_reserva(socio_id, partido_id, bono_utilizado):
 
 def consultar_bono(telefono):
     try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=90)
         return response.json()
     except Exception as e:
         print(f"❌ Error en consultar_bono: {e}")
@@ -1062,15 +1060,12 @@ def chat():
         if re.match(r'^\+?[0-9]{9,15}$', texto.strip()):
             telefono = texto.strip()
             resultado = verificar_telefono(telefono)
-            
             if resultado.get('success'):
                 sesion['paso'] = 'telefono_validado'
                 sesion['socio_id'] = resultado['socio_id']
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
-                
                 partidos = obtener_partidos_disponibles()
-                
                 if partidos.get('success') and partidos.get('partidos'):
                     opciones = []
                     for p in partidos['partidos']:
@@ -1099,7 +1094,6 @@ def chat():
                 'tipo': 'mensaje',
                 'mensaje': '📞 Por favor, ingresa un número de teléfono válido con formato internacional.\nEjemplo: +34123456789'
             })
-    
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Comando no reconocido.'})
 
 @app.route('/api/opcion', methods=['POST'])
@@ -1117,9 +1111,15 @@ def opcion():
         partido_id = int(opcion.split('_')[1])
         sesion['partido_seleccionado'] = partido_id
         
-        # Obtener reserva existente (incluye bolsa_actual)
+        # Obtener reserva existente (ya incluye bolsa_actual si se modifica backend, pero no)
+        # Como no tenemos bolsa_actual en reserva_existente, hacemos una petición extra
         reserva = obtener_reserva_existente(sesion['socio_id'], partido_id)
-        bolsa_actual = reserva.get('bolsa_actual', 0) if reserva.get('success') else 0
+        # Obtener saldo actual
+        try:
+            socio_data = verificar_telefono(sesion['telefono'])
+            bolsa_actual = socio_data.get('bolsa', 0) if socio_data.get('success') else 0
+        except:
+            bolsa_actual = 0
         
         if reserva.get('existe'):
             sesion['paso'] = 'reserva_existente'
@@ -1178,18 +1178,14 @@ def confirmar_reserva():
     partido_id = data.get('partido_id')
     asiste = data.get('asiste', False)
     invitados = data.get('invitados', 0)
-    
     try:
         invitados = max(0, min(int(invitados), 999))
     except:
         invitados = 0
-    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
-    
     sesion = sesiones[session_id]
     resultado = crear_reserva(sesion['socio_id'], partido_id, asiste, invitados)
-    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva creada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
@@ -1203,18 +1199,14 @@ def modificar_reserva_route():
     partido_id = data.get('partido_id')
     asiste = data.get('asiste', False)
     invitados = data.get('invitados', 0)
-    
     try:
         invitados = max(0, min(int(invitados), 999))
     except:
         invitados = 0
-    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
-    
     sesion = sesiones[session_id]
     resultado = modificar_reserva(sesion['socio_id'], partido_id, asiste, invitados)
-    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva modificada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
@@ -1227,13 +1219,10 @@ def eliminar_reserva_route():
     session_id = data.get('session_id', '')
     partido_id = data.get('partido_id')
     bono_utilizado = data.get('bono_utilizado', False)
-    
     if session_id not in sesiones:
         return jsonify({'mensaje': 'Sesión no válida'})
-    
     sesion = sesiones[session_id]
     resultado = eliminar_reserva(sesion['socio_id'], partido_id, bono_utilizado)
-    
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
         return jsonify({'mensaje': resultado.get('message', '✅ Reserva cancelada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
@@ -1244,18 +1233,13 @@ def eliminar_reserva_route():
 def api_consultar_bono():
     data = request.get_json()
     session_id = data.get('session_id', '')
-    
     if session_id not in sesiones:
         return jsonify({'success': False, 'message': 'Sesión no válida'})
-    
     sesion = sesiones[session_id]
     telefono = sesion.get('telefono')
-    
     if not telefono:
         return jsonify({'success': False, 'message': 'No hay teléfono registrado'})
-    
     resultado = consultar_bono(telefono)
-    
     if resultado.get('success'):
         mensaje = f"""
 📋 INFORMACIÓN DE TU BONO:
