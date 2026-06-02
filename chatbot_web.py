@@ -8,7 +8,7 @@ app = Flask(__name__)
 # Almacenamiento temporal de sesiones (en producción usar BD o Redis)
 sesiones = {}
 
-# URL del backend real (API)
+# URL del backend real (API) – Ajusta si es necesario
 BACKEND_URL = os.environ.get('BACKEND_URL', "https://chatbot-penia.onrender.com/api")
 
 HTML = '''
@@ -190,6 +190,7 @@ HTML = '''
     <script>
     let sessionId = null;
     let partidoSeleccionado = null;
+    const BACKEND_URL = "{{ backend_url }}";
     
     function generarSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -212,13 +213,9 @@ HTML = '''
     
     function eliminarFormularioAnterior() {
         const formularioExistente = document.getElementById('formulario_reserva');
-        if (formularioExistente) {
-            formularioExistente.remove();
-        }
+        if (formularioExistente) formularioExistente.remove();
         const formularioModificacion = document.getElementById('formulario_modificacion');
-        if (formularioModificacion) {
-            formularioModificacion.remove();
-        }
+        if (formularioModificacion) formularioModificacion.remove();
     }
     
     function eliminarMensajesBotAnteriores() {
@@ -239,9 +236,7 @@ HTML = '''
     
     function eliminarOpcionesPartidos() {
         const opcionesDiv = document.getElementById('opciones_partidos');
-        if (opcionesDiv) {
-            opcionesDiv.remove();
-        }
+        if (opcionesDiv) opcionesDiv.remove();
     }
     
     function limpiarMensajesYFormularios() {
@@ -266,9 +261,7 @@ HTML = '''
         
         habilitarBotonEnviar(false);
         
-        if (!sessionId) {
-            sessionId = generarSessionId();
-        }
+        if (!sessionId) sessionId = generarSessionId();
         
         const chatMessages = document.getElementById('chatMessages');
         const userMsg = document.createElement('div');
@@ -281,15 +274,11 @@ HTML = '''
         fetch('/api/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                texto: texto,
-                session_id: sessionId
-            })
+            body: JSON.stringify({ texto: texto, session_id: sessionId })
         })
         .then(response => response.json())
         .then(data => {
             limpiarMensajesYFormularios();
-            
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             
@@ -312,13 +301,11 @@ HTML = '''
                     };
                     optionsDiv.appendChild(btn);
                 });
-
                 const hr = document.createElement('hr');
                 hr.style.margin = '15px 0';
                 hr.style.border = 'none';
                 hr.style.borderTop = '1px solid #e8e4d8';
                 optionsDiv.appendChild(hr);
-                
                 const btnBono = document.createElement('button');
                 btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
                 btnBono.className = 'option-button';
@@ -328,7 +315,6 @@ HTML = '''
                     consultarBono();
                 };
                 optionsDiv.appendChild(btnBono);
-
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
@@ -349,7 +335,6 @@ HTML = '''
                 `;
                 formDiv.appendChild(checkboxDiv);
                 
-                // Checkbox para usar la bolsa (solo si tiene saldo)
                 if (data.bolsa_actual > 0) {
                     const bolsaDiv = document.createElement('div');
                     bolsaDiv.className = 'checkbox-group';
@@ -390,7 +375,6 @@ HTML = '''
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(true);
             }
-            
             chatMessages.scrollTop = chatMessages.scrollHeight;
         })
         .catch(error => {
@@ -405,10 +389,7 @@ HTML = '''
     
     function mostrarFormularioModificacion(partidoId, asisteActual, invitadosActual, bolsaActual) {
         limpiarMensajesYFormularios();
-        
-        if (invitadosActual === null || invitadosActual === undefined) {
-            invitadosActual = 0;
-        }
+        if (invitadosActual === null || invitadosActual === undefined) invitadosActual = 0;
         
         const chatMessages = document.getElementById('chatMessages');
         const botMsg = document.createElement('div');
@@ -467,17 +448,13 @@ HTML = '''
     }
     
     function seleccionarPartido(partidoId, partidoNombre) {
-        if (partidoSeleccionado === partidoId) {
-            return;
-        }
+        if (partidoSeleccionado === partidoId) return;
         partidoSeleccionado = partidoId;
         
         const opcionesDiv = document.getElementById('opciones_partidos');
         if (opcionesDiv) {
             const botones = opcionesDiv.querySelectorAll('.option-button');
-            botones.forEach(btn => {
-                deshabilitarBoton(btn);
-            });
+            botones.forEach(btn => deshabilitarBoton(btn));
         }
         
         fetch('/api/opcion', {
@@ -491,7 +468,6 @@ HTML = '''
         .then(response => response.json())
         .then(data => {
             limpiarMensajesYFormularios();
-            
             const chatMessages = document.getElementById('chatMessages');
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
@@ -500,7 +476,6 @@ HTML = '''
                 botMsg.innerHTML = data.mensaje;
                 const optionsDiv = document.createElement('div');
                 optionsDiv.className = 'options-container';
-                
                 data.opciones.forEach(op => {
                     const btn = document.createElement('button');
                     btn.textContent = op.texto;
@@ -517,7 +492,6 @@ HTML = '''
                     };
                     optionsDiv.appendChild(btn);
                 });
-                
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
@@ -531,7 +505,6 @@ HTML = '''
                 const formDiv = document.createElement('div');
                 formDiv.className = 'formulario-reserva';
                 formDiv.id = 'formulario_reserva';
-                
                 const checkboxDiv = document.createElement('div');
                 checkboxDiv.className = 'checkbox-group';
                 checkboxDiv.innerHTML = `
@@ -541,7 +514,6 @@ HTML = '''
                     </label>
                 `;
                 formDiv.appendChild(checkboxDiv);
-                
                 if (data.bolsa_actual > 0) {
                     const bolsaDiv = document.createElement('div');
                     bolsaDiv.className = 'checkbox-group';
@@ -553,7 +525,6 @@ HTML = '''
                     `;
                     formDiv.appendChild(bolsaDiv);
                 }
-                
                 const inputDiv = document.createElement('div');
                 inputDiv.className = 'input-group';
                 inputDiv.innerHTML = `
@@ -564,7 +535,6 @@ HTML = '''
                 formDiv.appendChild(inputDiv);
                 botMsg.appendChild(formDiv);
                 chatMessages.appendChild(botMsg);
-                
                 const btn = document.getElementById('btnConfirmarReserva');
                 if (btn) {
                     btn.onclick = () => {
@@ -582,7 +552,6 @@ HTML = '''
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
             }
-            
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
     }
@@ -591,25 +560,19 @@ HTML = '''
         fetch('/api/opcion', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                opcion: valor,
-                session_id: sessionId
-            })
+            body: JSON.stringify({ opcion: valor, session_id: sessionId })
         })
         .then(response => response.json())
         .then(data => {
             limpiarMensajesYFormularios();
-            
             const chatMessages = document.getElementById('chatMessages');
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
-            
             if (data.tipo === 'opciones') {
                 botMsg.innerHTML = data.mensaje;
                 const optionsDiv = document.createElement('div');
                 optionsDiv.className = 'options-container';
                 optionsDiv.id = 'opciones_partidos';
-                
                 data.opciones.forEach(op => {
                     const btn = document.createElement('button');
                     btn.textContent = op.texto;
@@ -621,13 +584,11 @@ HTML = '''
                     };
                     optionsDiv.appendChild(btn);
                 });
-                
                 const hr = document.createElement('hr');
                 hr.style.margin = '15px 0';
                 hr.style.border = 'none';
                 hr.style.borderTop = '1px solid #e8e4d8';
                 optionsDiv.appendChild(hr);
-                
                 const btnBono = document.createElement('button');
                 btnBono.textContent = '💰 ¿Quieres consultar si tienes bono?';
                 btnBono.className = 'option-button';
@@ -637,18 +598,15 @@ HTML = '''
                     consultarBono();
                 };
                 optionsDiv.appendChild(btnBono);
-                
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
                 partidoSeleccionado = null;
                 habilitarBotonEnviar(false);
-            } 
-            else {
+            } else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
             }
-            
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
     }
@@ -662,7 +620,7 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch('/api/crear_reserva', {
+        fetch(`${BACKEND_URL}/crear_reserva`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -677,25 +635,20 @@ HTML = '''
         .then(data => {
             const loading = document.getElementById('loading_msg');
             if (loading) loading.remove();
-            
             const formulario = document.getElementById('formulario_reserva');
             if (formulario) formulario.remove();
-            
             const todosMensajes = document.querySelectorAll('.bot-message');
             todosMensajes.forEach(msg => {
-                if (msg.innerHTML.includes('Reserva para:') || 
-                    msg.innerHTML.includes('Indica los detalles')) {
+                if (msg.innerHTML.includes('Reserva para:') || msg.innerHTML.includes('Indica los detalles')) {
                     msg.remove();
                 }
             });
-            
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = data.mensaje;
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
-            
             if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
                 habilitarBotonEnviar(true);
             } else {
@@ -724,7 +677,7 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch('/api/modificar_reserva', {
+        fetch(`${BACKEND_URL}/modificar_reserva`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -739,27 +692,22 @@ HTML = '''
         .then(data => {
             const loading = document.getElementById('loading_msg');
             if (loading) loading.remove();
-            
             const formulario = document.getElementById('formulario_modificacion');
             if (formulario) formulario.remove();
             const formularioReserva = document.getElementById('formulario_reserva');
             if (formularioReserva) formularioReserva.remove();
-            
             const todosMensajes = document.querySelectorAll('.bot-message');
             todosMensajes.forEach(msg => {
-                if (msg.innerHTML.includes('Modifica los detalles') || 
-                    msg.innerHTML.includes('✏️ Modifica los detalles')) {
+                if (msg.innerHTML.includes('Modifica los detalles') || msg.innerHTML.includes('✏️ Modifica los detalles')) {
                     msg.remove();
                 }
             });
-            
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             botMsg.innerHTML = data.mensaje;
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
-            
             if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
                 habilitarBotonEnviar(true);
             } else {
@@ -788,7 +736,7 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch('/api/consultar_bono', {
+        fetch(`${BACKEND_URL}/consultar_bono`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ session_id: sessionId })
@@ -843,7 +791,7 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch('/api/eliminar_reserva', {
+        fetch(`${BACKEND_URL}/eliminar_reserva`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -886,23 +834,17 @@ HTML = '''
         const input = document.getElementById('messageInput');
         const boton = document.getElementById('btnEnviar');
         habilitarBotonEnviar(true);
-        
         if (input) {
             input.addEventListener('keypress', function(event) {
                 if (event.keyCode === 13 || event.key === 'Enter') {
                     event.preventDefault();
-                    if (!boton.disabled) {
-                        enviarMensaje();
-                    }
+                    if (!boton.disabled) enviarMensaje();
                 }
             });
         }
-        
         if (boton) {
             boton.addEventListener('click', function() {
-                if (!boton.disabled) {
-                    enviarMensaje();
-                }
+                if (!boton.disabled) enviarMensaje();
             });
         }
     });
@@ -925,7 +867,7 @@ def verificar_telefono(telefono):
         return response.json()
     except Exception as e:
         print(f"❌ Error en verificar_telefono: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 def obtener_partidos_disponibles():
     try:
@@ -980,12 +922,12 @@ def crear_reserva(socio_id, partido_id, asiste, invitados):
 💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
 ━━━━━━━━━
 """
-                return {'success': True, 'message': mensaje_detallado}
+                return {'success': True, 'mensaje': mensaje_detallado}
         else:
-            return {'success': False, 'message': resultado.get('message', 'Error al crear la reserva')}
+            return {'success': False, 'mensaje': resultado.get('mensaje', 'Error al crear la reserva')}
     except Exception as e:
         print(f"❌ Error en crear_reserva: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 def modificar_reserva(socio_id, partido_id, asiste, invitados):
     try:
@@ -1016,12 +958,12 @@ def modificar_reserva(socio_id, partido_id, asiste, invitados):
 💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
 ━━━━━━━━━
 """
-                return {'success': True, 'message': mensaje_detallado}
+                return {'success': True, 'mensaje': mensaje_detallado}
         else:
-            return {'success': False, 'message': resultado.get('message', 'Error al modificar la reserva')}
+            return {'success': False, 'mensaje': resultado.get('mensaje', 'Error al modificar la reserva')}
     except Exception as e:
         print(f"❌ Error en modificar_reserva: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
@@ -1029,7 +971,7 @@ def eliminar_reserva(socio_id, partido_id, bono_utilizado):
         return response.json()
     except Exception as e:
         print(f"❌ Error en eliminar_reserva: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 def consultar_bono(telefono):
     try:
@@ -1037,7 +979,7 @@ def consultar_bono(telefono):
         return response.json()
     except Exception as e:
         print(f"❌ Error en consultar_bono: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 # =============================================
 # RUTAS DE FLASK (interfaz web)
@@ -1045,7 +987,7 @@ def consultar_bono(telefono):
 
 @app.route('/')
 def index():
-    return render_template_string(HTML)
+    return render_template_string(HTML, backend_url=BACKEND_URL)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -1079,7 +1021,6 @@ def chat():
                             'valor': f"partido_{p['partidoID']}",
                             'partido_id': p['partidoID']
                         })
-                    
                     return jsonify({
                         'tipo': 'opciones',
                         'mensaje': f"✅ Teléfono validado. ¡Bienvenido {resultado['nombre']}! 📞\n\nSelecciona el partido para el que quieres reservar:",
@@ -1093,7 +1034,7 @@ def chat():
             else:
                 return jsonify({
                     'tipo': 'mensaje',
-                    'mensaje': f'❌ {resultado.get("message", "Número no registrado")}\n\nPor favor, intenta con otro número o contacta al administrador.'
+                    'mensaje': f'❌ {resultado.get("mensaje", "Número no registrado")}\n\nPor favor, intenta con otro número o contacta al administrador.'
                 })
         else:
             return jsonify({
@@ -1118,9 +1059,8 @@ def opcion():
         partido_id = int(opcion.split('_')[1])
         sesion['partido_seleccionado'] = partido_id
         
-        # Obtener reserva existente (incluye bolsa_actual si el backend la devuelve)
         reserva = obtener_reserva_existente(sesion['socio_id'], partido_id)
-        # Obtener saldo actual del socio (bolsa)
+        # Obtener saldo actual
         try:
             socio_data = verificar_telefono(sesion['telefono'])
             bolsa_actual = socio_data.get('bolsa', 0) if socio_data.get('success') else 0
@@ -1179,7 +1119,6 @@ def opcion():
 
 @app.route('/api/confirmar_reserva', methods=['POST'])
 def confirmar_reserva():
-    # Esta ruta es un proxy para crear_reserva (usado por el JavaScript antiguo)
     data = request.get_json()
     session_id = data.get('session_id', '')
     partido_id = data.get('partido_id')
@@ -1194,13 +1133,12 @@ def confirmar_reserva():
     
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('message', '✅ Reserva creada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
+        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva creada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
     else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("message", "No se pudo crear la reserva")}'})
+        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo crear la reserva")}'})
 
 @app.route('/api/modificar_reserva', methods=['POST'])
 def modificar_reserva_route():
-    # Esta ruta es un proxy para modificar_reserva
     data = request.get_json()
     session_id = data.get('session_id', '')
     partido_id = data.get('partido_id')
@@ -1215,9 +1153,9 @@ def modificar_reserva_route():
     
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('message', '✅ Reserva modificada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
+        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva modificada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
     else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("message", "No se pudo modificar la reserva")}'})
+        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo modificar la reserva")}'})
 
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def eliminar_reserva_route():
@@ -1234,9 +1172,9 @@ def eliminar_reserva_route():
     
     if resultado.get('success'):
         sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('message', '✅ Reserva cancelada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
+        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva cancelada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
     else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("message", "No se pudo cancelar la reserva")}'})
+        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo cancelar la reserva")}'})
 
 @app.route('/api/consultar_bono', methods=['POST'])
 def api_consultar_bono():
@@ -1244,13 +1182,13 @@ def api_consultar_bono():
     session_id = data.get('session_id', '')
     
     if session_id not in sesiones:
-        return jsonify({'success': False, 'message': 'Sesión no válida'})
+        return jsonify({'success': False, 'mensaje': 'Sesión no válida'})
     
     sesion = sesiones[session_id]
     telefono = sesion.get('telefono')
     
     if not telefono:
-        return jsonify({'success': False, 'message': 'No hay teléfono registrado'})
+        return jsonify({'success': False, 'mensaje': 'No hay teléfono registrado'})
     
     resultado = consultar_bono(telefono)
     
@@ -1264,9 +1202,9 @@ def api_consultar_bono():
 ━━━━━━━━━
 ℹ️ Si quieres consultar algún dato sobre tu bono, ampliarlo o cambiar el teléfono, avisa a tu administrador.
 """
-        return jsonify({'success': True, 'message': mensaje})
+        return jsonify({'success': True, 'mensaje': mensaje})
     else:
-        return jsonify({'success': False, 'message': resultado.get('message', 'Error al consultar el bono')})
+        return jsonify({'success': False, 'mensaje': resultado.get('mensaje', 'Error al consultar el bono')})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
