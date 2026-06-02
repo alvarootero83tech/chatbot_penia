@@ -283,20 +283,25 @@ def api_reserva_existente():
 
 
 # =============================================
-# API ENDPOINT: Crear nueva reserva (con usar_bolsa)
+# API ENDPOINT: Crear nueva reserva (recibe teléfono, no socio_id)
 # =============================================
 @app.route('/api/crear_reserva', methods=['POST'])
 def api_crear_reserva():
     data = request.get_json()
-    socio_id = data.get('socio_id')
+    telefono = data.get('telefono')
     partido_id = data.get('partido_id')
     plaza_socio = data.get('plaza_socio', False)
     num_plazas_NO_socio = data.get('num_plazas_NO_socio', 0)
     usar_bolsa = data.get('usar_bolsa', False)
     
-    if not socio_id or not partido_id:
-        return jsonify({'success': False, 'mensaje': 'Faltan datos'}), 400
+    if not telefono or not partido_id:
+        return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
     
+    socio = get_socio_by_tlf(telefono)
+    if not socio:
+        return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
+    
+    socio_id = socio['socioID']
     exito, mensaje, coste, pagado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, False, usar_bolsa)
     
     if exito:
@@ -310,20 +315,25 @@ def api_crear_reserva():
 
 
 # =============================================
-# API ENDPOINT: Modificar reserva existente (con usar_bolsa)
+# API ENDPOINT: Modificar reserva existente (recibe teléfono)
 # =============================================
 @app.route('/api/modificar_reserva', methods=['POST'])
 def api_modificar_reserva():
     data = request.get_json()
-    socio_id = data.get('socio_id')
+    telefono = data.get('telefono')
     partido_id = data.get('partido_id')
     plaza_socio = data.get('plaza_socio', False)
     num_plazas_NO_socio = data.get('num_plazas_NO_socio', 0)
     usar_bolsa = data.get('usar_bolsa', False)
     
-    if not socio_id or not partido_id:
-        return jsonify({'success': False, 'mensaje': 'Faltan datos'}), 400
+    if not telefono or not partido_id:
+        return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
     
+    socio = get_socio_by_tlf(telefono)
+    if not socio:
+        return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
+    
+    socio_id = socio['socioID']
     exito, mensaje, coste, pagado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, False, usar_bolsa)
     
     if exito:

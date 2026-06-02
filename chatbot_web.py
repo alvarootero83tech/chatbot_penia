@@ -5,10 +5,10 @@ import os
 
 app = Flask(__name__)
 
-# Almacenamiento temporal de sesiones (en producción usar BD o Redis)
+# Almacenamiento temporal de sesiones
 sesiones = {}
 
-# URL del backend real (API) – Ajusta si es necesario
+# URL del backend real (API)
 BACKEND_URL = os.environ.get('BACKEND_URL', "https://chatbot-penia.onrender.com/api")
 
 HTML = '''
@@ -18,6 +18,7 @@ HTML = '''
     <title>Chatbot de Reservas - Peña</title>
     <meta charset="UTF-8">
     <style>
+        /* (estilos igual que antes, no cambian) */
         .formulario-reserva {
             margin-top: 15px;
             padding: 15px;
@@ -190,7 +191,7 @@ HTML = '''
     <script>
     let sessionId = null;
     let partidoSeleccionado = null;
-    const BACKEND_URL = "{{ backend_url }}";
+    let telefonoGlobal = null;  // almacena el teléfono del socio validado
     
     function generarSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -612,6 +613,10 @@ HTML = '''
     }
     
     function enviarReserva(partidoId, asiste, invitados, usarBolsa) {
+        if (!telefonoGlobal) {
+            alert('No hay teléfono registrado. Reinicia el chat.');
+            return;
+        }
         const chatMessages = document.getElementById('chatMessages');
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'message bot-message';
@@ -624,11 +629,11 @@ HTML = '''
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
+                telefono: telefonoGlobal,
                 partido_id: partidoId,
-                asiste: asiste,
-                invitados: invitados,
-                usar_bolsa: usarBolsa,
-                session_id: sessionId
+                plaza_socio: asiste,
+                num_plazas_NO_socio: invitados,
+                usar_bolsa: usarBolsa
             })
         })
         .then(response => response.json())
@@ -669,6 +674,10 @@ HTML = '''
     }
     
     function enviarModificacion(partidoId, asiste, invitados, usarBolsa) {
+        if (!telefonoGlobal) {
+            alert('No hay teléfono registrado. Reinicia el chat.');
+            return;
+        }
         const chatMessages = document.getElementById('chatMessages');
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'message bot-message';
@@ -681,11 +690,11 @@ HTML = '''
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
+                telefono: telefonoGlobal,
                 partido_id: partidoId,
-                asiste: asiste,
-                invitados: invitados,
-                usar_bolsa: usarBolsa,
-                session_id: sessionId
+                plaza_socio: asiste,
+                num_plazas_NO_socio: invitados,
+                usar_bolsa: usarBolsa
             })
         })
         .then(response => response.json())
@@ -749,7 +758,7 @@ HTML = '''
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             if (data.success) {
-                botMsg.innerHTML = data.message;
+                botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
                 setTimeout(() => {
                     const reinicioMsg = document.createElement('div');
@@ -759,10 +768,11 @@ HTML = '''
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                     sessionId = null;
                     partidoSeleccionado = null;
+                    telefonoGlobal = null;
                     habilitarBotonEnviar(true);
                 }, 2000);
             } else {
-                botMsg.innerHTML = '❌ ' + data.message;
+                botMsg.innerHTML = '❌ ' + data.mensaje;
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(true);
             }
@@ -854,7 +864,7 @@ HTML = '''
 '''
 
 # =============================================
-# FUNCIONES DEL BACKEND DEL CHATBOT
+# FUNCIONES DEL BACKEND DEL CHATBOT (Proxy)
 # =============================================
 
 def verificar_telefono(telefono):
@@ -893,101 +903,24 @@ def obtener_detalles_reserva_api(socio_id, partido_id):
         print(f"❌ Error en obtener_detalles_reserva_api: {e}")
         return {'success': False, 'message': 'Error de conexión'}
 
-def crear_reserva(socio_id, partido_id, asiste, invitados):
+def crear_reserva(socio_id, partido_id, asiste, invitados, usar_bolsa):
     try:
-        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=60)
-        resultado = response.json()
-        if resultado.get('success'):
-            detalles = obtener_detalles_reserva_api(socio_id, partido_id)
-            if detalles.get('success'):
-                reserva = detalles.get('reserva', {})
-                partido = reserva.get('partido', {})
-                socio = reserva.get('socio', {})
-                asiste_texto = "✅ Sí" if reserva.get('plaza_socio') else "❌ No"
-                mensaje_detallado = f"""
-✅ Reserva creada correctamente
-
-📋 DETALLES DE LA RESERVA:
-━━━━━━━━━
-⚽ Partido: {partido.get('equipo_visitante', 'No disponible')}
-📅 Fecha: {partido.get('fecha', 'No disponible')}
-🕐 Hora: {partido.get('hora', 'No disponible')}
-🏷️ Temporada: {partido.get('temporada', 'No disponible')}
-📌 Tipo: {partido.get('tipo', 'No disponible')}
-
-👤 Socio: {socio.get('nombre', '')} {socio.get('apellidos', '')}
-📞 Teléfono: {socio.get('telefono', 'No disponible')}
-🎫 Asistes como socio al partido: {asiste_texto}
-👥 Número de NO socios: {reserva.get('num_plazas_no_socio', 0)}
-💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
-━━━━━━━━━
-"""
-                return {'success': True, 'mensaje': mensaje_detallado}
-        else:
-            return {'success': False, 'mensaje': resultado.get('mensaje', 'Error al crear la reserva')}
-    except Exception as e:
-        print(f"❌ Error en crear_reserva: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-def modificar_reserva(socio_id, partido_id, asiste, invitados):
-    try:
-        response = requests.post(f"{BACKEND_URL}/modificar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'plaza_socio': asiste, 'num_plazas_NO_socio': invitados}, timeout=60)
-        resultado = response.json()
-        if resultado.get('success'):
-            detalles = obtener_detalles_reserva_api(socio_id, partido_id)
-            if detalles.get('success'):
-                reserva = detalles.get('reserva', {})
-                partido = reserva.get('partido', {})
-                socio = reserva.get('socio', {})
-                asiste_texto = "✅ Sí" if reserva.get('plaza_socio') else "❌ No"
-                mensaje_detallado = f"""
-✅ Reserva modificada correctamente
-
-📋 DETALLES DE LA RESERVA:
-━━━━━━━━━
-⚽ Partido: {partido.get('equipo_visitante', 'No disponible')}
-📅 Fecha: {partido.get('fecha', 'No disponible')}
-🕐 Hora: {partido.get('hora', 'No disponible')}
-🏷️ Temporada: {partido.get('temporada', 'No disponible')}
-📌 Tipo: {partido.get('tipo', 'No disponible')}
-
-👤 Socio: {socio.get('nombre', '')} {socio.get('apellidos', '')}
-📞 Teléfono: {socio.get('telefono', 'No disponible')}
-🎫 Asistes como socio al partido: {asiste_texto}
-👥 Número de NO socios: {reserva.get('num_plazas_no_socio', 0)}
-💰 Bono utilizado: {"✅ Sí" if reserva.get('bono_utilizado') else "❌ No"}
-━━━━━━━━━
-"""
-                return {'success': True, 'mensaje': mensaje_detallado}
-        else:
-            return {'success': False, 'mensaje': resultado.get('mensaje', 'Error al modificar la reserva')}
-    except Exception as e:
-        print(f"❌ Error en modificar_reserva: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-def eliminar_reserva(socio_id, partido_id, bono_utilizado):
-    try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=60)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en eliminar_reserva: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-def consultar_bono(telefono):
-    try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=60)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en consultar_bono: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
+        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={
+            'telefono': sesiones[session_id]['telefono'] if ... # No usamos esta función directamente
+        }, timeout=60)
+        # En realidad, las funciones proxy ahora no se usan, se llama directamente desde el JS.
+        # Pero las dejamos por compatibilidad.
+        return {'success': False, 'mensaje': 'No implementado'}
+    except:
+        return {'success': False, 'mensaje': 'Error'}
 
 # =============================================
-# RUTAS DE FLASK (interfaz web)
+# RUTAS DE FLASK (Proxy simplificado)
 # =============================================
 
 @app.route('/')
 def index():
-    return render_template_string(HTML, backend_url=BACKEND_URL)
+    return render_template_string(HTML)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -1012,7 +945,6 @@ def chat():
                 sesion['telefono'] = telefono
                 
                 partidos = obtener_partidos_disponibles()
-                
                 if partidos.get('success') and partidos.get('partidos'):
                     opciones = []
                     for p in partidos['partidos']:
@@ -1119,43 +1051,14 @@ def opcion():
 
 @app.route('/api/confirmar_reserva', methods=['POST'])
 def confirmar_reserva():
-    data = request.get_json()
-    session_id = data.get('session_id', '')
-    partido_id = data.get('partido_id')
-    asiste = data.get('asiste', False)
-    invitados = data.get('invitados', 0)
-    
-    if session_id not in sesiones:
-        return jsonify({'mensaje': 'Sesión no válida'})
-    
-    sesion = sesiones[session_id]
-    resultado = crear_reserva(sesion['socio_id'], partido_id, asiste, invitados)
-    
-    if resultado.get('success'):
-        sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva creada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
-    else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo crear la reserva")}'})
+    # Este proxy ya no se usa porque las peticiones van directamente al backend.
+    # Se mantiene por si acaso, pero devuelve error.
+    return jsonify({'mensaje': 'Este endpoint está obsoleto. Usa /api/crear_reserva directamente.'}), 404
 
 @app.route('/api/modificar_reserva', methods=['POST'])
 def modificar_reserva_route():
-    data = request.get_json()
-    session_id = data.get('session_id', '')
-    partido_id = data.get('partido_id')
-    asiste = data.get('asiste', False)
-    invitados = data.get('invitados', 0)
-    
-    if session_id not in sesiones:
-        return jsonify({'mensaje': 'Sesión no válida'})
-    
-    sesion = sesiones[session_id]
-    resultado = modificar_reserva(sesion['socio_id'], partido_id, asiste, invitados)
-    
-    if resultado.get('success'):
-        sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva modificada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
-    else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo modificar la reserva")}'})
+    # Obsoleto.
+    return jsonify({'mensaje': 'Este endpoint está obsoleto. Usa /api/modificar_reserva directamente.'}), 404
 
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def eliminar_reserva_route():
@@ -1168,6 +1071,9 @@ def eliminar_reserva_route():
         return jsonify({'mensaje': 'Sesión no válida'})
     
     sesion = sesiones[session_id]
+    if 'socio_id' not in sesion:
+        return jsonify({'mensaje': 'Sesión inválida: socio no identificado'})
+    
     resultado = eliminar_reserva(sesion['socio_id'], partido_id, bono_utilizado)
     
     if resultado.get('success'):
