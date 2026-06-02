@@ -18,7 +18,6 @@ HTML = '''
     <title>Chatbot de Reservas - Peña</title>
     <meta charset="UTF-8">
     <style>
-        /* (estilos igual que antes, no cambian) */
         .formulario-reserva {
             margin-top: 15px;
             padding: 15px;
@@ -191,7 +190,8 @@ HTML = '''
     <script>
     let sessionId = null;
     let partidoSeleccionado = null;
-    let telefonoGlobal = null;  // almacena el teléfono del socio validado
+    let telefonoGlobal = null;
+    const BACKEND_URL = "{{ backend_url }}";
     
     function generarSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -261,7 +261,6 @@ HTML = '''
         if (!texto) return;
         
         habilitarBotonEnviar(false);
-        
         if (!sessionId) sessionId = generarSessionId();
         
         const chatMessages = document.getElementById('chatMessages');
@@ -895,32 +894,29 @@ def obtener_reserva_existente(socio_id, partido_id):
         print(f"❌ Error en obtener_reserva_existente: {e}")
         return {'success': False, 'existe': False}
 
-def obtener_detalles_reserva_api(socio_id, partido_id):
+def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
-        response = requests.get(f"{BACKEND_URL}/reserva/{socio_id}/{partido_id}", timeout=60)
+        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=60)
         return response.json()
     except Exception as e:
-        print(f"❌ Error en obtener_detalles_reserva_api: {e}")
-        return {'success': False, 'message': 'Error de conexión'}
+        print(f"❌ Error en eliminar_reserva: {e}")
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
-def crear_reserva(socio_id, partido_id, asiste, invitados, usar_bolsa):
+def consultar_bono(telefono):
     try:
-        response = requests.post(f"{BACKEND_URL}/crear_reserva", json={
-            'telefono': sesiones[session_id]['telefono'] if ... # No usamos esta función directamente
-        }, timeout=60)
-        # En realidad, las funciones proxy ahora no se usan, se llama directamente desde el JS.
-        # Pero las dejamos por compatibilidad.
-        return {'success': False, 'mensaje': 'No implementado'}
-    except:
-        return {'success': False, 'mensaje': 'Error'}
+        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=60)
+        return response.json()
+    except Exception as e:
+        print(f"❌ Error en consultar_bono: {e}")
+        return {'success': False, 'mensaje': 'Error de conexión'}
 
 # =============================================
-# RUTAS DE FLASK (Proxy simplificado)
+# RUTAS DE FLASK
 # =============================================
 
 @app.route('/')
 def index():
-    return render_template_string(HTML)
+    return render_template_string(HTML, backend_url=BACKEND_URL)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -943,6 +939,7 @@ def chat():
                 sesion['socio_id'] = resultado['socio_id']
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
+                telefonoGlobal = telefono  # No persiste, pero en JS se guarda aparte
                 
                 partidos = obtener_partidos_disponibles()
                 if partidos.get('success') and partidos.get('partidos'):
@@ -953,10 +950,12 @@ def chat():
                             'valor': f"partido_{p['partidoID']}",
                             'partido_id': p['partidoID']
                         })
+                    # En la respuesta, además, devolvemos el teléfono para que JS lo guarde
                     return jsonify({
                         'tipo': 'opciones',
                         'mensaje': f"✅ Teléfono validado. ¡Bienvenido {resultado['nombre']}! 📞\n\nSelecciona el partido para el que quieres reservar:",
-                        'opciones': opciones
+                        'opciones': opciones,
+                        'telefono': telefono  # Para que JS lo guarde en telefonoGlobal
                     })
                 else:
                     return jsonify({
@@ -1048,17 +1047,6 @@ def opcion():
             })
     
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Opción no válida.'})
-
-@app.route('/api/confirmar_reserva', methods=['POST'])
-def confirmar_reserva():
-    # Este proxy ya no se usa porque las peticiones van directamente al backend.
-    # Se mantiene por si acaso, pero devuelve error.
-    return jsonify({'mensaje': 'Este endpoint está obsoleto. Usa /api/crear_reserva directamente.'}), 404
-
-@app.route('/api/modificar_reserva', methods=['POST'])
-def modificar_reserva_route():
-    # Obsoleto.
-    return jsonify({'mensaje': 'Este endpoint está obsoleto. Usa /api/modificar_reserva directamente.'}), 404
 
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def eliminar_reserva_route():
