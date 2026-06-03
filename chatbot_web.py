@@ -798,52 +798,35 @@ HTML = '''
     }
     
     function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
-        const chatMessages = document.getElementById('chatMessages');
-        limpiarMensajesYFormularios();
-        const loadingMsg = document.createElement('div');
-        loadingMsg.className = 'message bot-message';
-        loadingMsg.innerHTML = '⏳ Procesando cancelación...';
-        loadingMsg.id = 'loading_msg';
-        chatMessages.appendChild(loadingMsg);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        
-        fetch(`${BACKEND_URL}/eliminar_reserva`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                partido_id: partidoId,
-                bono_utilizado: bonoUtilizado,
-                session_id: sessionId
-            })
+    if (!telefonoGlobal) {
+        alert('No hay teléfono registrado. Reinicia el chat.');
+        return;
+    }
+    const chatMessages = document.getElementById('chatMessages');
+    limpiarMensajesYFormularios();
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'message bot-message';
+    loadingMsg.innerHTML = '⏳ Procesando cancelación...';
+    loadingMsg.id = 'loading_msg';
+    chatMessages.appendChild(loadingMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    fetch(`${BACKEND_URL}/eliminar_reserva`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            telefono: telefonoGlobal,      // ← enviar teléfono
+            partido_id: partidoId,
+            bono_utilizado: bonoUtilizado
         })
-        .then(response => response.json())
-        .then(data => {
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            limpiarMensajesYFormularios();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = data.mensaje;
-            chatMessages.appendChild(botMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            partidoSeleccionado = null;
-            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
-                habilitarBotonEnviar(true);
-            } else {
-                habilitarBotonEnviar(false);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            const loading = document.getElementById('loading_msg');
-            if (loading) loading.remove();
-            const botMsg = document.createElement('div');
-            botMsg.className = 'message bot-message';
-            botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
-            chatMessages.appendChild(botMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            habilitarBotonEnviar(true);
-        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        // ... resto igual
+    })
+    .catch(error => {
+        // ...
+    });
     }
     
     document.addEventListener('DOMContentLoaded', function() {

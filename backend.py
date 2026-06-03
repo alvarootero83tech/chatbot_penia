@@ -377,42 +377,34 @@ def api_crear_reserva():
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def api_eliminar_reserva():
     data = request.get_json()
-    session_id = data.get('session_id')
+    telefono = data.get('telefono')
     partido_id = data.get('partido_id')
-    bono_utilizado = data.get('bono_utilizado', False)
     
-    if not session_id or not partido_id:
-        return jsonify({'success': False, 'mensaje': 'Faltan datos (session_id o partido_id)'}), 400
+    if not telefono or not partido_id:
+        return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
     
-    if session_id not in sesiones:
-        return jsonify({'success': False, 'mensaje': 'Sesión no válida'}), 400
+    # Obtener socio por teléfono
+    socio = get_socio_by_tlf(telefono)
+    if not socio:
+        return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
     
-    sesion = sesiones[session_id]
-    socio_id = sesion.get('socio_id')
-    
-    if not socio_id:
-        return jsonify({'success': False, 'mensaje': 'Sesión inválida: socio no identificado'}), 400
+    socio_id = socio['socioID']
     
     connection = get_db_connection()
     if connection is None:
         return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
     
     cursor = connection.cursor()
-    cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
-    connection.commit()
     
-    cursor.close()
-    connection.close()
-    
-    # Limpiar datos de la reserva en la sesión
-    sesion['paso'] = 'esperando_telefono'
-    if 'partido_seleccionado' in sesion:
-        del sesion['partido_seleccionado']
-    if 'reserva_actual' in sesion:
-        del sesion['reserva_actual']
-    
-    return jsonify({'success': True, 'mensaje': '✅ Reserva cancelada correctamente'})
-
+    try:
+        cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
+        connection.commit()
+        return jsonify({'success': True, 'mensaje': '✅ Reserva cancelada correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error al eliminar: {str(e)}'}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 # =============================================
 # API ENDPOINT: Obtener información de una reserva por socio y partido
