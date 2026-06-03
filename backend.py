@@ -364,7 +364,7 @@ def api_crear_reserva():
 🎫 Asiste al partido: {asiste_texto}
 👥 Número de no socios: {detalles['num_plazas_NO_socio']}
 💰 Bono utilizado: {bono_texto}
-💶 Precio a pagar (informativo): {detalles['precioApagar']}€
+💶 Precio a pagar (Se descontará del bono, si procede): {detalles['precioApagar']}€
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
     
@@ -377,23 +377,39 @@ def api_crear_reserva():
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def api_eliminar_reserva():
     data = request.get_json()
-    socio_id = data.get('socio_id')
+    session_id = data.get('session_id')
     partido_id = data.get('partido_id')
+    bono_utilizado = data.get('bono_utilizado', False)
     
-    if not socio_id or not partido_id:
-        return jsonify({'success': False, 'mensaje': 'Faltan datos'}), 400
+    if not session_id or not partido_id:
+        return jsonify({'success': False, 'mensaje': 'Faltan datos (session_id o partido_id)'}), 400
+    
+    if session_id not in sesiones:
+        return jsonify({'success': False, 'mensaje': 'Sesión no válida'}), 400
+    
+    sesion = sesiones[session_id]
+    socio_id = sesion.get('socio_id')
+    
+    if not socio_id:
+        return jsonify({'success': False, 'mensaje': 'Sesión inválida: socio no identificado'}), 400
     
     connection = get_db_connection()
     if connection is None:
         return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
     
     cursor = connection.cursor()
-    
     cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
     connection.commit()
     
     cursor.close()
     connection.close()
+    
+    # Limpiar datos de la reserva en la sesión
+    sesion['paso'] = 'esperando_telefono'
+    if 'partido_seleccionado' in sesion:
+        del sesion['partido_seleccionado']
+    if 'reserva_actual' in sesion:
+        del sesion['reserva_actual']
     
     return jsonify({'success': True, 'mensaje': '✅ Reserva cancelada correctamente'})
 
