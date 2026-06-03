@@ -846,9 +846,9 @@ HTML = '''
             botMsg.className = 'message bot-message';
             
             if (data.mensaje) {
-                botMsg.innerHTML = data.mensaje + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+                botMsg.innerHTML = data.mensaje + ' 🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
             } else {
-                botMsg.innerHTML = '✅ Reserva cancelada correctamente\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+                botMsg.innerHTML = '✅ Reserva cancelada correctamente. 🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
             }
             
             chatMessages.appendChild(botMsg);
