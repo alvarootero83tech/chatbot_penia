@@ -115,7 +115,7 @@ def calcular_coste_total(plaza_socio, num_plazas_NO_socio):
 
 
 # =============================================
-# FUNCIÓN: Insertar o actualizar reserva (con uso de bolsa)
+# FUNCIÓN: Insertar o actualizar reserva (crea o modifica según exista)
 # =============================================
 def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUtilizado=False, usar_bolsa=False):
     connection = get_db_connection()
@@ -126,22 +126,13 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, bonoUt
     
     coste_total = calcular_coste_total(plazaSocio, num_plazas_NO_socio)
     
+    # La bolsa es meramente informativa: solo registramos el coste en precioApagar
     if usar_bolsa:
-        cursor.execute("SELECT bolsa FROM socio WHERE socioID = %s", (socioID,))
-        result = cursor.fetchone()
-        saldo_actual = result[0] if result else 0
-        
-        if saldo_actual < coste_total:
-            cursor.close()
-            connection.close()
-            return False, f"Saldo insuficiente. Tienes {saldo_actual}€ y el coste es {coste_total}€", 0, 0
-        
-        nuevo_saldo = saldo_actual - coste_total
-        cursor.execute("UPDATE socio SET bolsa = %s WHERE socioID = %s", (nuevo_saldo, socioID))
         precio_apagar = coste_total
     else:
         precio_apagar = 0.00
     
+    # Verificar si existe la reserva
     check_query = "SELECT * FROM reservaplazas WHERE partidoID = %s AND socioID = %s"
     cursor.execute(check_query, (partidoID, socioID))
     existe = cursor.fetchone()
@@ -232,7 +223,7 @@ def api_partidos_disponibles():
 
 
 # =============================================
-# API ENDPOINT: Verificar si existe reserva (devuelve también bolsa_actual)
+# API ENDPOINT: Verificar si existe reserva
 # =============================================
 @app.route('/api/reserva_existente', methods=['POST'])
 def api_reserva_existente():
@@ -283,7 +274,7 @@ def api_reserva_existente():
 
 
 # =============================================
-# API ENDPOINT: Crear nueva reserva (recibe teléfono, no socio_id)
+# API ENDPOINT: Crear o modificar reserva (único endpoint)
 # =============================================
 @app.route('/api/crear_reserva', methods=['POST'])
 def api_crear_reserva():
@@ -306,39 +297,7 @@ def api_crear_reserva():
     
     if exito:
         if usar_bolsa:
-            mensaje_adicional = f" Se descontaron {coste}€ de tu bolsa."
-        else:
-            mensaje_adicional = " No se utilizó saldo de la bolsa."
-        return jsonify({'success': True, 'mensaje': f'✅ {mensaje}{mensaje_adicional}'})
-    else:
-        return jsonify({'success': False, 'mensaje': mensaje}), 500
-
-
-# =============================================
-# API ENDPOINT: Modificar reserva existente (recibe teléfono)
-# =============================================
-@app.route('/api/modificar_reserva', methods=['POST'])
-def api_modificar_reserva():
-    data = request.get_json()
-    telefono = data.get('telefono')
-    partido_id = data.get('partido_id')
-    plaza_socio = data.get('plaza_socio', False)
-    num_plazas_NO_socio = data.get('num_plazas_NO_socio', 0)
-    usar_bolsa = data.get('usar_bolsa', False)
-    
-    if not telefono or not partido_id:
-        return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
-    
-    socio = get_socio_by_tlf(telefono)
-    if not socio:
-        return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
-    
-    socio_id = socio['socioID']
-    exito, mensaje, coste, pagado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, False, usar_bolsa)
-    
-    if exito:
-        if usar_bolsa:
-            mensaje_adicional = f" Se descontaron {coste}€ de tu bolsa."
+            mensaje_adicional = f" Se ha registrado el uso de {coste}€ de la bolsa (no se descuenta realmente)."
         else:
             mensaje_adicional = " No se utilizó saldo de la bolsa."
         return jsonify({'success': True, 'mensaje': f'✅ {mensaje}{mensaje_adicional}'})
@@ -354,7 +313,6 @@ def api_eliminar_reserva():
     data = request.get_json()
     socio_id = data.get('socio_id')
     partido_id = data.get('partido_id')
-    bono_utilizado = data.get('bono_utilizado', False)
     
     if not socio_id or not partido_id:
         return jsonify({'success': False, 'mensaje': 'Faltan datos'}), 400
@@ -364,23 +322,6 @@ def api_eliminar_reserva():
         return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
     
     cursor = connection.cursor()
-    
-    if bono_utilizado:
-        cursor.execute("SELECT precioSocio FROM auxiliar WHERE id = 1")
-        result = cursor.fetchone()
-        precio_socio = result[0] if result else 3
-        
-        cursor.execute("SELECT plazaSocio, num_plazas_NO_socio FROM reservaplazas WHERE socioID = %s AND partidoID = %s", 
-                      (socio_id, partido_id))
-        reserva = cursor.fetchone()
-        
-        if reserva:
-            coste = 0
-            if reserva[0]:
-                coste += precio_socio
-            coste += reserva[1] * 10
-            
-            cursor.execute("UPDATE socio SET bolsa = bolsa - %s WHERE socioID = %s", (coste, socio_id))
     
     cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
     connection.commit()
@@ -470,4 +411,5 @@ def api_obtener_reserva(socio_id, partido_id):
 if __name__ == '__main__':
     print("🚀 Backend de reservas iniciado en http://localhost:5000")
     print("📞 Identificación de socios por número de teléfono")
+    print("💰 La bolsa es meramente informativa: no se descuenta ni se actualiza")
     app.run(debug=True, host='0.0.0.0', port=5000)

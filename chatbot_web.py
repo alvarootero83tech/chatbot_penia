@@ -319,7 +319,6 @@ HTML = '''
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
                 
-                // Guardar el teléfono cuando llega en la respuesta
                 if (data.telefono) {
                     telefonoGlobal = data.telefono;
                     sessionStorage.setItem('telefonoGlobal', data.telefono);
@@ -691,7 +690,8 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch(`${BACKEND_URL}/modificar_reserva`, {
+        // CAMBIADO: usar /crear_reserva en lugar de /modificar_reserva (backend unificado)
+        fetch(`${BACKEND_URL}/crear_reserva`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
