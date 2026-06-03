@@ -159,6 +159,46 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, usar_b
     
     return True, mensaje, coste_total, bono_utilizado
 
+# =============================================
+# FUNCIÓN INTERNA: Obtener detalles de una reserva (reutilizable)
+# =============================================
+def _obtener_detalles_reserva(socio_id, partido_id):
+    connection = get_db_connection()
+    if connection is None:
+        return None
+    
+    cursor = connection.cursor(dictionary=True)
+    query = """
+        SELECT 
+            r.socioID,
+            r.partidoID,
+            r.plazaSocio,
+            r.num_plazas_NO_socio,
+            r.bonoUtilizado,
+            r.precioApagar,
+            p.nombreEquipoVisitante,
+            p.temporada,
+            p.tipoPartido,
+            DATE_FORMAT(p.fecha, '%d-%m-%Y') as fecha,
+            TIME_FORMAT(p.hora, '%H:%i') as hora,
+            s.nombre,
+            s.apellidos,
+            s.tlf,
+            s.bolsa
+        FROM reservaplazas r
+        JOIN partido p ON r.partidoID = p.partidoID
+        JOIN socio s ON r.socioID = s.socioID
+        WHERE r.socioID = %s AND r.partidoID = %s
+    """
+    cursor.execute(query, (socio_id, partido_id))
+    reserva = cursor.fetchone()
+    
+    cursor.close()
+    connection.close()
+    
+    return reserva
+
+
 
 # ---------------------------------------------------- ENDPOINTS --------------------------------------------------
 
@@ -295,14 +335,40 @@ def api_crear_reserva():
     socio_id = socio['socioID']
     exito, mensaje, coste, bono_utilizado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, usar_bolsa)
     
-    if exito:
-        if bono_utilizado:
-            mensaje_adicional = f" Has indicado que quieres usar la bolsa. El coste de la reserva es {coste}€ (es informativo, no se descuenta)."
-        else:
-            mensaje_adicional = f" No has indicado uso de la bolsa. El coste de la reserva es {coste}€ (es informativo)."
-        return jsonify({'success': True, 'mensaje': f'✅ {mensaje}{mensaje_adicional}'})
-    else:
+    if not exito:
         return jsonify({'success': False, 'mensaje': mensaje}), 500
+    
+    # Obtener los detalles completos usando la función interna
+    detalles = _obtener_detalles_reserva(socio_id, partido_id)
+    
+    if not detalles:
+        return jsonify({'success': True, 'mensaje': f'✅ {mensaje}'})
+    
+    # Construir mensaje detallado
+    asiste_texto = "✅ Sí" if detalles['plazaSocio'] else "❌ No"
+    bono_texto = "✅ Sí" if detalles['bonoUtilizado'] else "❌ No"
+    
+    mensaje_detallado = f"""
+✅ {mensaje}
+
+📋 DETALLES DE LA RESERVA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚽ Partido: {detalles['nombreEquipoVisitante']}
+📅 Fecha: {detalles['fecha']}
+🕐 Hora: {detalles['hora']}
+🏷️ Temporada: {detalles['temporada']}
+📌 Tipo: {detalles['tipoPartido']}
+
+👤 Socio: {detalles['nombre']} {detalles['apellidos']}
+📞 Teléfono: {detalles['tlf']}
+🎫 Asiste al partido: {asiste_texto}
+👥 Número de no socios: {detalles['num_plazas_NO_socio']}
+💰 Bono utilizado: {bono_texto}
+💶 Precio a pagar (informativo): {detalles['precioApagar']}€
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+    
+    return jsonify({'success': True, 'mensaje': mensaje_detallado})
 
 
 # =============================================
@@ -337,41 +403,9 @@ def api_eliminar_reserva():
 # =============================================
 @app.route('/api/reserva/<int:socio_id>/<int:partido_id>', methods=['GET'])
 def api_obtener_reserva(socio_id, partido_id):
-    connection = get_db_connection()
-    if connection is None:
-        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
+    detalles = _obtener_detalles_reserva(socio_id, partido_id)
     
-    cursor = connection.cursor(dictionary=True)
-    
-    query = """
-        SELECT 
-            r.socioID,
-            r.partidoID,
-            r.plazaSocio,
-            r.num_plazas_NO_socio,
-            r.bonoUtilizado,
-            r.precioApagar,
-            p.nombreEquipoVisitante,
-            p.temporada,
-            p.tipoPartido,
-            DATE_FORMAT(p.fecha, '%d-%m-%Y') as fecha,
-            TIME_FORMAT(p.hora, '%H:%i') as hora,
-            s.nombre,
-            s.apellidos,
-            s.tlf,
-            s.bolsa
-        FROM reservaplazas r
-        JOIN partido p ON r.partidoID = p.partidoID
-        JOIN socio s ON r.socioID = s.socioID
-        WHERE r.socioID = %s AND r.partidoID = %s
-    """
-    cursor.execute(query, (socio_id, partido_id))
-    reserva = cursor.fetchone()
-    
-    cursor.close()
-    connection.close()
-    
-    if not reserva:
+    if not detalles:
         return jsonify({
             'success': False, 
             'mensaje': f'No se encontró reserva para socio {socio_id} y partido {partido_id}'
@@ -381,24 +415,24 @@ def api_obtener_reserva(socio_id, partido_id):
         'success': True,
         'reserva': {
             'partido': {
-                'id': reserva['partidoID'],
-                'equipo_visitante': reserva['nombreEquipoVisitante'],
-                'temporada': reserva['temporada'],
-                'tipo': reserva['tipoPartido'],
-                'fecha': reserva['fecha'],
-                'hora': reserva['hora']
+                'id': detalles['partidoID'],
+                'equipo_visitante': detalles['nombreEquipoVisitante'],
+                'temporada': detalles['temporada'],
+                'tipo': detalles['tipoPartido'],
+                'fecha': detalles['fecha'],
+                'hora': detalles['hora']
             },
             'socio': {
-                'id': reserva['socioID'],
-                'nombre': reserva['nombre'],
-                'apellidos': reserva['apellidos'],
-                'telefono': reserva['tlf'],
-                'bolsa': reserva['bolsa']
+                'id': detalles['socioID'],
+                'nombre': detalles['nombre'],
+                'apellidos': detalles['apellidos'],
+                'telefono': detalles['tlf'],
+                'bolsa': detalles['bolsa']
             },
-            'plaza_socio': bool(reserva['plazaSocio']),
-            'num_plazas_no_socio': reserva['num_plazas_NO_socio'],
-            'bono_utilizado': bool(reserva['bonoUtilizado']),
-            'precio_apagar': float(reserva['precioApagar']) if reserva['precioApagar'] is not None else 0.00
+            'plaza_socio': bool(detalles['plazaSocio']),
+            'num_plazas_no_socio': detalles['num_plazas_NO_socio'],
+            'bono_utilizado': bool(detalles['bonoUtilizado']),
+            'precio_apagar': float(detalles['precioApagar']) if detalles['precioApagar'] is not None else 0.00
         }
     }
     
