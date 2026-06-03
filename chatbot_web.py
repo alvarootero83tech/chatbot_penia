@@ -187,10 +187,10 @@ HTML = '''
         </div>
     </div>
 
-    <script>
+  <script>
     let sessionId = null;
     let partidoSeleccionado = null;
-    let telefonoGlobal = null;
+    let telefonoGlobal = sessionStorage.getItem('telefonoGlobal') || null;
     const BACKEND_URL = "{{ backend_url }}";
     
     function generarSessionId() {
@@ -318,6 +318,12 @@ HTML = '''
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
                 habilitarBotonEnviar(false);
+                
+                // Guardar el teléfono cuando llega en la respuesta
+                if (data.telefono) {
+                    telefonoGlobal = data.telefono;
+                    sessionStorage.setItem('telefonoGlobal', data.telefono);
+                }
             } 
             else if (data.tipo === 'formulario_reserva') {
                 botMsg.innerHTML = data.mensaje;
@@ -768,6 +774,7 @@ HTML = '''
                     sessionId = null;
                     partidoSeleccionado = null;
                     telefonoGlobal = null;
+                    sessionStorage.removeItem('telefonoGlobal');
                     habilitarBotonEnviar(true);
                 }, 2000);
             } else {
