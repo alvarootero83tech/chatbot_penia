@@ -171,6 +171,7 @@ HTML = '''
 </head>
 <body>
     <h1>🤖 Chatbot de Reservas</h1>
+    <iframe src="https://chatbot-penia.onrender.com" width="0" height="0" style="border:0;" style="display:none;"></iframe>
     <div class="chat-container">
         <div class="chat-messages" id="chatMessages">
             <div class="message bot-message">
