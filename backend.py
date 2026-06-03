@@ -296,7 +296,7 @@ def api_crear_reserva():
     detalles = _obtener_detalles_reserva(socio_id, partido_id)
 
     if not detalles:
-        return jsonify({'success': True, 'mensaje': f'✅ {mensaje}'})
+        return jsonify({'success': True, 'mensaje': f'✅ {mensaje}\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
 
     asiste_texto = "✅ Sí" if detalles['plazaSocio'] else "❌ No"
     bono_texto = "✅ Sí" if detalles['bonoUtilizado'] else "❌ No"
@@ -319,6 +319,8 @@ def api_crear_reserva():
 💰 Bono utilizado: {bono_texto}
 💶 Precio a pagar (Se descontará del bono, si procede): {detalles['precioApagar']}€
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:
 """
 
     return jsonify({'success': True, 'mensaje': mensaje_detallado})

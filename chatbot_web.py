@@ -668,11 +668,7 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
-            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
-                habilitarBotonEnviar(true);
-            } else {
-                habilitarBotonEnviar(false);
-            }
+            habilitarBotonEnviar(true);
         })
         .catch(error => {
             console.error(error);
@@ -731,11 +727,7 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
-            if (data.mensaje && data.mensaje.includes('Puedes hacer una nueva reserva')) {
-                habilitarBotonEnviar(true);
-            } else {
-                habilitarBotonEnviar(false);
-            }
+            habilitarBotonEnviar(true);
         })
         .catch(error => {
             console.error(error);
