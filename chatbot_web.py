@@ -870,7 +870,7 @@ def verificar_telefono(telefono):
     try:
         url = f"{BACKEND_URL}/verificar_socio"
         print(f"🔍 Llamando a: {url}")
-        response = requests.post(url, json={'telefono': telefono}, timeout=60)
+        response = requests.post(url, json={'telefono': telefono}, timeout=180)
         print(f"🔍 Status code: {response.status_code}")
         print(f"🔍 Respuesta: {response.text}")
         return response.json()
@@ -880,7 +880,7 @@ def verificar_telefono(telefono):
 
 def obtener_partidos_disponibles():
     try:
-        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=60)
+        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=180)
         return response.json()
     except Exception as e:
         print(f"❌ Error en obtener_partidos_disponibles: {e}")
@@ -888,7 +888,7 @@ def obtener_partidos_disponibles():
 
 def obtener_reserva_existente(socio_id, partido_id):
     try:
-        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=180)
         return response.json()
     except Exception as e:
         print(f"❌ Error en obtener_reserva_existente: {e}")
@@ -896,7 +896,7 @@ def obtener_reserva_existente(socio_id, partido_id):
 
 def eliminar_reserva(socio_id, partido_id, bono_utilizado):
     try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=180)
         return response.json()
     except Exception as e:
         print(f"❌ Error en eliminar_reserva: {e}")
@@ -904,7 +904,7 @@ def eliminar_reserva(socio_id, partido_id, bono_utilizado):
 
 def consultar_bono(telefono):
     try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=60)
+        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=180)
         return response.json()
     except Exception as e:
         print(f"❌ Error en consultar_bono: {e}")
