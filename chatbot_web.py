@@ -668,6 +668,9 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
+            telefonoGlobal = null;
+            sessionStorage.removeItem('telefonoGlobal');
+            sessionId = null;
             habilitarBotonEnviar(true);
         })
         .catch(error => {
@@ -727,6 +730,9 @@ HTML = '''
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
+            telefonoGlobal = null;
+            sessionStorage.removeItem('telefonoGlobal');
+            sessionId = null;
             habilitarBotonEnviar(true);
         })
         .catch(error => {
