@@ -797,7 +797,7 @@ HTML = '''
         });
     }
     
-    function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
+   function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
     if (!telefonoGlobal) {
         alert('No hay teléfono registrado. Reinicia el chat.');
         return;
@@ -815,19 +815,47 @@ HTML = '''
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            telefono: telefonoGlobal,      // ← enviar teléfono
+            telefono: telefonoGlobal,
             partido_id: partidoId,
             bono_utilizado: bonoUtilizado
         })
     })
     .then(response => response.json())
     .then(data => {
-        // ... resto igual
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
+        
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        
+        if (data.mensaje) {
+            botMsg.innerHTML = data.mensaje + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+        } else {
+            botMsg.innerHTML = '✅ Reserva cancelada correctamente\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+        }
+        
+        chatMessages.appendChild(botMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Reiniciar sesión
+        partidoSeleccionado = null;
+        telefonoGlobal = null;
+        sessionStorage.removeItem('telefonoGlobal');
+        sessionId = null;
+        habilitarBotonEnviar(true);
     })
     .catch(error => {
-        // ...
+        console.error(error);
+        const loading = document.getElementById('loading_msg');
+        if (loading) loading.remove();
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot-message';
+        botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
+        chatMessages.appendChild(botMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        habilitarBotonEnviar(true);
     });
-    }
+    }   
     
     document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('messageInput');
