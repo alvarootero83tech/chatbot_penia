@@ -5,10 +5,8 @@ import os
 
 app = Flask(__name__)
 
-# Almacenamiento temporal de sesiones
 sesiones = {}
 
-# URL del backend real (API)
 BACKEND_URL = os.environ.get('BACKEND_URL', "https://chatbot-penia.onrender.com/api")
 
 HTML = '''
@@ -197,14 +195,6 @@ HTML = '''
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
     
-    function deshabilitarBoton(btn) {
-        if (btn) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-        }
-    }
-    
     function habilitarBotonEnviar(habilitado) {
         const btn = document.getElementById('btnEnviar');
         if (btn) {
@@ -296,7 +286,9 @@ HTML = '''
                     btn.onclick = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        deshabilitarBoton(btn);
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
                         seleccionarPartido(btn.dataset.partidoId, btn.dataset.partidoNombre);
                     };
                     optionsDiv.appendChild(btn);
@@ -311,7 +303,9 @@ HTML = '''
                 btnBono.className = 'option-button';
                 btnBono.style.backgroundColor = '#27ae60';
                 btnBono.onclick = (e) => {
-                    deshabilitarBoton(btnBono);
+                    btnBono.disabled = true;
+                    btnBono.style.opacity = '0.5';
+                    btnBono.style.cursor = 'not-allowed';
                     consultarBono();
                 };
                 optionsDiv.appendChild(btnBono);
@@ -366,7 +360,9 @@ HTML = '''
                 const btn = document.getElementById('btnConfirmarReserva');
                 if (btn) {
                     btn.onclick = () => {
-                        deshabilitarBoton(btn);
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
                         const asiste = document.getElementById('asisteCheckbox').checked;
                         const invitados = obtenerInvitados('invitadosInput');
                         const usarBolsa = document.getElementById('usarBolsaCheckbox') ? document.getElementById('usarBolsaCheckbox').checked : false;
@@ -442,7 +438,9 @@ HTML = '''
         const btn = document.getElementById('btnConfirmarModificacion');
         if (btn) {
             btn.onclick = () => {
-                deshabilitarBoton(btn);
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
                 const asiste = document.getElementById('asisteCheckboxMod').checked;
                 const invitados = obtenerInvitados('invitadosInputMod');
                 const usarBolsa = document.getElementById('usarBolsaCheckboxMod') ? document.getElementById('usarBolsaCheckboxMod').checked : false;
@@ -459,7 +457,11 @@ HTML = '''
         const opcionesDiv = document.getElementById('opciones_partidos');
         if (opcionesDiv) {
             const botones = opcionesDiv.querySelectorAll('.option-button');
-            botones.forEach(btn => deshabilitarBoton(btn));
+            botones.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
         }
         
         fetch('/api/opcion', {
@@ -486,7 +488,9 @@ HTML = '''
                     btn.textContent = op.texto;
                     btn.className = 'option-button';
                     btn.onclick = () => {
-                        deshabilitarBoton(btn);
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
                         if (op.valor === 'cancelar') {
                             enviarConfirmacionEliminar(data.partido_id, data.bono_utilizado);
                         } else if (op.valor === 'modificar') {
@@ -543,7 +547,9 @@ HTML = '''
                 const btn = document.getElementById('btnConfirmarReserva');
                 if (btn) {
                     btn.onclick = () => {
-                        deshabilitarBoton(btn);
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
                         const asiste = document.getElementById('asisteCheckbox').checked;
                         const invitados = obtenerInvitados('invitadosInput');
                         const usarBolsa = document.getElementById('usarBolsaCheckbox') ? document.getElementById('usarBolsaCheckbox').checked : false;
@@ -584,7 +590,9 @@ HTML = '''
                     btn.className = 'option-button';
                     btn.dataset.partidoId = op.partido_id;
                     btn.onclick = (e) => {
-                        deshabilitarBoton(btn);
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
                         seleccionarPartido(op.partido_id, op.texto);
                     };
                     optionsDiv.appendChild(btn);
@@ -599,7 +607,9 @@ HTML = '''
                 btnBono.className = 'option-button';
                 btnBono.style.backgroundColor = '#27ae60';
                 btnBono.onclick = (e) => {
-                    deshabilitarBoton(btnBono);
+                    btnBono.disabled = true;
+                    btnBono.style.opacity = '0.5';
+                    btnBono.style.cursor = 'not-allowed';
                     consultarBono();
                 };
                 optionsDiv.appendChild(btnBono);
@@ -690,7 +700,6 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        // CAMBIADO: usar /crear_reserva en lugar de /modificar_reserva (backend unificado)
         fetch(`${BACKEND_URL}/crear_reserva`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -750,10 +759,10 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch(`${BACKEND_URL}/consultar_bono`, {
+        fetch(`${BACKEND_URL}/verificar_socio`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ session_id: sessionId })
+            body: JSON.stringify({ telefono: telefonoGlobal })
         })
         .then(response => response.json())
         .then(data => {
@@ -763,7 +772,15 @@ HTML = '''
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             if (data.success) {
-                botMsg.innerHTML = data.mensaje;
+                botMsg.innerHTML = `
+📋 INFORMACIÓN DE TU BONO:
+━━━━━━━━━
+👤 Socio: ${data.nombre} ${data.apellidos}
+📞 Teléfono: ${telefonoGlobal}
+💰 Saldo actual (bolsa): ${data.bolsa}€
+━━━━━━━━━
+ℹ️ Si quieres consultar algún dato sobre tu bono, ampliarlo o cambiar el teléfono, avisa a tu administrador.
+`;
                 chatMessages.appendChild(botMsg);
                 setTimeout(() => {
                     const reinicioMsg = document.createElement('div');
@@ -797,65 +814,64 @@ HTML = '''
         });
     }
     
-   function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
-    if (!telefonoGlobal) {
-        alert('No hay teléfono registrado. Reinicia el chat.');
-        return;
-    }
-    const chatMessages = document.getElementById('chatMessages');
-    limpiarMensajesYFormularios();
-    const loadingMsg = document.createElement('div');
-    loadingMsg.className = 'message bot-message';
-    loadingMsg.innerHTML = '⏳ Procesando cancelación...';
-    loadingMsg.id = 'loading_msg';
-    chatMessages.appendChild(loadingMsg);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-    
-    fetch(`${BACKEND_URL}/eliminar_reserva`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            telefono: telefonoGlobal,
-            partido_id: partidoId,
-            bono_utilizado: bonoUtilizado
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        const loading = document.getElementById('loading_msg');
-        if (loading) loading.remove();
-        
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot-message';
-        
-        if (data.mensaje) {
-            botMsg.innerHTML = data.mensaje + '🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
-        } else {
-            botMsg.innerHTML = '✅ Reserva cancelada correctamente. 🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+    function enviarConfirmacionEliminar(partidoId, bonoUtilizado) {
+        if (!telefonoGlobal) {
+            alert('No hay teléfono registrado. Reinicia el chat.');
+            return;
         }
-        
-        chatMessages.appendChild(botMsg);
+        const chatMessages = document.getElementById('chatMessages');
+        limpiarMensajesYFormularios();
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'message bot-message';
+        loadingMsg.innerHTML = '⏳ Procesando cancelación...';
+        loadingMsg.id = 'loading_msg';
+        chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        // Reiniciar sesión
-        partidoSeleccionado = null;
-        telefonoGlobal = null;
-        sessionStorage.removeItem('telefonoGlobal');
-        sessionId = null;
-        habilitarBotonEnviar(true);
-    })
-    .catch(error => {
-        console.error(error);
-        const loading = document.getElementById('loading_msg');
-        if (loading) loading.remove();
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot-message';
-        botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
-        chatMessages.appendChild(botMsg);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        habilitarBotonEnviar(true);
-    });
-    }   
+        fetch(`${BACKEND_URL}/eliminar_reserva`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                telefono: telefonoGlobal,
+                partido_id: partidoId,
+                bono_utilizado: bonoUtilizado
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const loading = document.getElementById('loading_msg');
+            if (loading) loading.remove();
+            
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            
+            if (data.mensaje) {
+                botMsg.innerHTML = data.mensaje + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+            } else {
+                botMsg.innerHTML = '✅ Reserva cancelada correctamente\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
+            }
+            
+            chatMessages.appendChild(botMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            partidoSeleccionado = null;
+            telefonoGlobal = null;
+            sessionStorage.removeItem('telefonoGlobal');
+            sessionId = null;
+            habilitarBotonEnviar(true);
+        })
+        .catch(error => {
+            console.error(error);
+            const loading = document.getElementById('loading_msg');
+            if (loading) loading.remove();
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = '⚠️ Error de conexión con el servidor';
+            chatMessages.appendChild(botMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            habilitarBotonEnviar(true);
+        });
+    }
     
     document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('messageInput');
@@ -880,86 +896,43 @@ HTML = '''
 </html>
 '''
 
-# =============================================
-# FUNCIONES DEL BACKEND DEL CHATBOT (Proxy)
-# =============================================
-
-def verificar_telefono(telefono):
-    try:
-        url = f"{BACKEND_URL}/verificar_socio"
-        print(f"🔍 Llamando a: {url}")
-        response = requests.post(url, json={'telefono': telefono}, timeout=180)
-        print(f"🔍 Status code: {response.status_code}")
-        print(f"🔍 Respuesta: {response.text}")
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en verificar_telefono: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-def obtener_partidos_disponibles():
-    try:
-        response = requests.get(f"{BACKEND_URL}/partidos_disponibles", timeout=180)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en obtener_partidos_disponibles: {e}")
-        return {'success': False, 'partidos': []}
-
-def obtener_reserva_existente(socio_id, partido_id):
-    try:
-        response = requests.post(f"{BACKEND_URL}/reserva_existente", json={'socio_id': socio_id, 'partido_id': partido_id}, timeout=180)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en obtener_reserva_existente: {e}")
-        return {'success': False, 'existe': False}
-
-def eliminar_reserva(socio_id, partido_id, bono_utilizado):
-    try:
-        response = requests.post(f"{BACKEND_URL}/eliminar_reserva", json={'socio_id': socio_id, 'partido_id': partido_id, 'bono_utilizado': bono_utilizado}, timeout=180)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en eliminar_reserva: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-def consultar_bono(telefono):
-    try:
-        response = requests.post(f"{BACKEND_URL}/verificar_socio", json={'telefono': telefono}, timeout=180)
-        return response.json()
-    except Exception as e:
-        print(f"❌ Error en consultar_bono: {e}")
-        return {'success': False, 'mensaje': 'Error de conexión'}
-
-# =============================================
-# RUTAS DE FLASK
-# =============================================
 
 @app.route('/')
 def index():
     return render_template_string(HTML, backend_url=BACKEND_URL)
+
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
     data = request.get_json()
     texto = data.get('texto', '')
     session_id = data.get('session_id', '')
-    
+
     if session_id not in sesiones:
         sesiones[session_id] = {'paso': 'esperando_telefono'}
-    
+
     sesion = sesiones[session_id]
-    
+
     if sesion['paso'] == 'esperando_telefono':
         if re.match(r'^\+?[0-9]{9,15}$', texto.strip()):
             telefono = texto.strip()
-            resultado = verificar_telefono(telefono)
-            
+            resultado = requests.post(
+                f"{BACKEND_URL}/verificar_socio",
+                json={'telefono': telefono},
+                timeout=180
+            ).json()
+
             if resultado.get('success'):
                 sesion['paso'] = 'telefono_validado'
                 sesion['socio_id'] = resultado['socio_id']
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
-                telefonoGlobal = telefono  # No persiste, pero en JS se guarda aparte
-                
-                partidos = obtener_partidos_disponibles()
+
+                partidos = requests.get(
+                    f"{BACKEND_URL}/partidos_disponibles",
+                    timeout=180
+                ).json()
+
                 if partidos.get('success') and partidos.get('partidos'):
                     opciones = []
                     for p in partidos['partidos']:
@@ -968,12 +941,11 @@ def chat():
                             'valor': f"partido_{p['partidoID']}",
                             'partido_id': p['partidoID']
                         })
-                    # En la respuesta, además, devolvemos el teléfono para que JS lo guarde
                     return jsonify({
                         'tipo': 'opciones',
                         'mensaje': f"✅ Teléfono validado. ¡Bienvenido {resultado['nombre']}! 📞\n\nSelecciona el partido para el que quieres reservar:",
                         'opciones': opciones,
-                        'telefono': telefono  # Para que JS lo guarde en telefonoGlobal
+                        'telefono': telefono
                     })
                 else:
                     return jsonify({
@@ -990,32 +962,38 @@ def chat():
                 'tipo': 'mensaje',
                 'mensaje': '📞 Por favor, ingresa un número de teléfono válido con formato internacional.\nEjemplo: +34123456789'
             })
-    
+
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Comando no reconocido.'})
+
 
 @app.route('/api/opcion', methods=['POST'])
 def opcion():
     data = request.get_json()
     opcion = data.get('opcion', '')
     session_id = data.get('session_id', '')
-    
+
     if session_id not in sesiones:
         return jsonify({'tipo': 'mensaje', 'mensaje': 'Sesión no válida. Por favor reinicia el chat.'})
-    
+
     sesion = sesiones[session_id]
-    
+
     if opcion.startswith('partido_'):
         partido_id = int(opcion.split('_')[1])
         sesion['partido_seleccionado'] = partido_id
-        
-        reserva = obtener_reserva_existente(sesion['socio_id'], partido_id)
-        # Obtener saldo actual
-        try:
-            socio_data = verificar_telefono(sesion['telefono'])
-            bolsa_actual = socio_data.get('bolsa', 0) if socio_data.get('success') else 0
-        except:
-            bolsa_actual = 0
-        
+
+        reserva = requests.post(
+            f"{BACKEND_URL}/reserva_existente",
+            json={'socio_id': sesion['socio_id'], 'partido_id': partido_id},
+            timeout=180
+        ).json()
+
+        socio_data = requests.post(
+            f"{BACKEND_URL}/verificar_socio",
+            json={'telefono': sesion['telefono']},
+            timeout=180
+        ).json()
+        bolsa_actual = socio_data.get('bolsa', 0) if socio_data.get('success') else 0
+
         if reserva.get('existe'):
             sesion['paso'] = 'reserva_existente'
             sesion['reserva_actual'] = reserva
@@ -1035,7 +1013,10 @@ def opcion():
             })
         else:
             sesion['paso'] = 'hacer_reserva'
-            partidos = obtener_partidos_disponibles()
+            partidos = requests.get(
+                f"{BACKEND_URL}/partidos_disponibles",
+                timeout=180
+            ).json()
             partido_nombre = "este partido"
             for p in partidos.get('partidos', []):
                 if p['partidoID'] == partido_id:
@@ -1047,9 +1028,12 @@ def opcion():
                 'partido_id': partido_id,
                 'bolsa_actual': bolsa_actual
             })
-    
+
     elif opcion == 'menu_principal':
-        partidos = obtener_partidos_disponibles()
+        partidos = requests.get(
+            f"{BACKEND_URL}/partidos_disponibles",
+            timeout=180
+        ).json()
         if partidos.get('success') and partidos.get('partidos'):
             opciones = []
             for p in partidos['partidos']:
@@ -1063,60 +1047,9 @@ def opcion():
                 'mensaje': "Selecciona el partido para el que quieres reservar:",
                 'opciones': opciones
             })
-    
+
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Opción no válida.'})
 
-@app.route('/api/eliminar_reserva', methods=['POST'])
-def eliminar_reserva_route():
-    data = request.get_json()
-    session_id = data.get('session_id', '')
-    partido_id = data.get('partido_id')
-    bono_utilizado = data.get('bono_utilizado', False)
-    
-    if session_id not in sesiones:
-        return jsonify({'mensaje': 'Sesión no válida'})
-    
-    sesion = sesiones[session_id]
-    if 'socio_id' not in sesion:
-        return jsonify({'mensaje': 'Sesión inválida: socio no identificado'})
-    
-    resultado = eliminar_reserva(sesion['socio_id'], partido_id, bono_utilizado)
-    
-    if resultado.get('success'):
-        sesiones[session_id] = {'paso': 'esperando_telefono'}
-        return jsonify({'mensaje': resultado.get('mensaje', '✅ Reserva cancelada correctamente') + '\n\n🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:'})
-    else:
-        return jsonify({'mensaje': f'❌ Error: {resultado.get("mensaje", "No se pudo cancelar la reserva")}'})
-
-@app.route('/api/consultar_bono', methods=['POST'])
-def api_consultar_bono():
-    data = request.get_json()
-    session_id = data.get('session_id', '')
-    
-    if session_id not in sesiones:
-        return jsonify({'success': False, 'mensaje': 'Sesión no válida'})
-    
-    sesion = sesiones[session_id]
-    telefono = sesion.get('telefono')
-    
-    if not telefono:
-        return jsonify({'success': False, 'mensaje': 'No hay teléfono registrado'})
-    
-    resultado = consultar_bono(telefono)
-    
-    if resultado.get('success'):
-        mensaje = f"""
-📋 INFORMACIÓN DE TU BONO:
-━━━━━━━━━
-👤 Socio: {resultado.get('nombre')} {resultado.get('apellidos')}
-📞 Teléfono: {telefono}
-💰 Saldo actual (bolsa): {resultado.get('bolsa', 0)}€
-━━━━━━━━━
-ℹ️ Si quieres consultar algún dato sobre tu bono, ampliarlo o cambiar el teléfono, avisa a tu administrador.
-"""
-        return jsonify({'success': True, 'mensaje': mensaje})
-    else:
-        return jsonify({'success': False, 'mensaje': resultado.get('mensaje', 'Error al consultar el bono')})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

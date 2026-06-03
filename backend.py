@@ -1,10 +1,9 @@
 from flask import Flask, request, jsonify
 import mysql.connector
 from mysql.connector import Error
-import re
 import os
-
 from flask_cors import CORS
+
 app = Flask(__name__)
 CORS(app)
 
@@ -19,9 +18,7 @@ def get_db_connection():
         db_name = os.environ.get('DB_NAME', 'defaultdb')
         db_user = os.environ.get('DB_USER', 'root')
         db_password = os.environ.get('DB_PASSWORD', '')
-        
-        print(f"Conectando a BD: host={db_host}, port={db_port}, db={db_name}, user={db_user}")
-        
+
         connection = mysql.connector.connect(
             host=db_host,
             port=int(db_port),
@@ -29,7 +26,6 @@ def get_db_connection():
             user=db_user,
             password=db_password
         )
-        print("✅ Conexión exitosa a la base de datos")
         return connection
     except Error as e:
         print(f"Error de conexión: {e}")
@@ -42,46 +38,20 @@ def get_db_connection():
 def get_socio_by_tlf(telefono):
     if not telefono:
         return None
-    
+
     connection = get_db_connection()
     if connection is None:
         return None
-    
+
     cursor = connection.cursor(dictionary=True)
     query = "SELECT socioID, nombre, apellidos, bolsa FROM socio WHERE tlf = %s"
     cursor.execute(query, (telefono,))
     socio = cursor.fetchone()
-    
+
     cursor.close()
     connection.close()
-    
+
     return socio
-
-
-# =============================================
-# FUNCIÓN: Obtener partidoID por nombre de equipo (solo disponibles)
-# =============================================
-def get_partido_id(nombre_equipo):
-    connection = get_db_connection()
-    if connection is None:
-        return None
-    
-    cursor = connection.cursor()
-    query = """
-        SELECT partidoID 
-        FROM partido 
-        WHERE nombreEquipoVisitante LIKE %s 
-          AND disponible = TRUE
-        ORDER BY fecha DESC 
-        LIMIT 1
-    """
-    cursor.execute(query, (f"%{nombre_equipo}%",))
-    result = cursor.fetchone()
-    
-    cursor.close()
-    connection.close()
-    
-    return result[0] if result else None
 
 
 # =============================================
@@ -91,14 +61,14 @@ def get_precios():
     connection = get_db_connection()
     if connection is None:
         return None, None
-    
+
     cursor = connection.cursor()
     cursor.execute("SELECT precioSocio, precioNoSocio FROM auxiliar WHERE id = 1")
     result = cursor.fetchone()
-    
+
     cursor.close()
     connection.close()
-    
+
     return (result[0], result[1]) if result else (None, None)
 
 
@@ -115,28 +85,23 @@ def calcular_coste_total(plaza_socio, num_plazas_NO_socio):
 
 
 # =============================================
-# FUNCIÓN: Insertar o actualizar reserva (crea o modifica según exista)
+# FUNCIÓN: Insertar o actualizar reserva
 # =============================================
 def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, usar_bolsa=False):
     connection = get_db_connection()
     if connection is None:
         return False, "Error de conexión a BD", 0
-    
+
     cursor = connection.cursor()
-    
-    # Calcular coste total siempre
+
     coste_total = calcular_coste_total(plazaSocio, num_plazas_NO_socio)
-    
-    # precioApagar siempre guarda el coste total
     precio_apagar = coste_total
-    
-    # bonoUtilizado se pone según si marcó "usar bolsa" o no
     bono_utilizado = usar_bolsa
-    
+
     check_query = "SELECT * FROM reservaplazas WHERE partidoID = %s AND socioID = %s"
     cursor.execute(check_query, (partidoID, socioID))
     existe = cursor.fetchone()
-    
+
     if existe:
         update_query = """
             UPDATE reservaplazas 
@@ -152,21 +117,22 @@ def insertar_reserva(partidoID, socioID, plazaSocio, num_plazas_NO_socio, usar_b
         """
         cursor.execute(insert_query, (partidoID, socioID, plazaSocio, num_plazas_NO_socio, bono_utilizado, precio_apagar))
         mensaje = "Reserva creada correctamente"
-    
+
     connection.commit()
     cursor.close()
     connection.close()
-    
+
     return True, mensaje, coste_total, bono_utilizado
 
+
 # =============================================
-# FUNCIÓN INTERNA: Obtener detalles de una reserva (reutilizable)
+# FUNCIÓN INTERNA: Obtener detalles de una reserva
 # =============================================
 def _obtener_detalles_reserva(socio_id, partido_id):
     connection = get_db_connection()
     if connection is None:
         return None
-    
+
     cursor = connection.cursor(dictionary=True)
     query = """
         SELECT 
@@ -192,31 +158,29 @@ def _obtener_detalles_reserva(socio_id, partido_id):
     """
     cursor.execute(query, (socio_id, partido_id))
     reserva = cursor.fetchone()
-    
+
     cursor.close()
     connection.close()
-    
+
     return reserva
 
 
-
-# ---------------------------------------------------- ENDPOINTS --------------------------------------------------
-
 # =============================================
-# API ENDPOINT: Verificar socio por teléfono
+# ENDPOINTS
 # =============================================
+
 @app.route('/api/verificar_socio', methods=['POST'])
 def api_verificar_socio():
     data = request.get_json()
     telefono = data.get('telefono', '')
-    
+
     if not telefono:
         return jsonify({'success': False, 'mensaje': 'Teléfono requerido'}), 400
-    
+
     socio = get_socio_by_tlf(telefono)
     if socio:
         return jsonify({
-            'success': True, 
+            'success': True,
             'socio_id': socio['socioID'],
             'nombre': socio['nombre'],
             'apellidos': socio['apellidos'],
@@ -226,15 +190,12 @@ def api_verificar_socio():
         return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
 
 
-# =============================================
-# API ENDPOINT: Obtener partidos disponibles
-# =============================================
 @app.route('/api/partidos_disponibles', methods=['GET'])
 def api_partidos_disponibles():
     connection = get_db_connection()
     if connection is None:
         return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
-    
+
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
         SELECT partidoID, nombreEquipoVisitante, fecha, hora, temporada, tipoPartido
@@ -243,10 +204,10 @@ def api_partidos_disponibles():
         ORDER BY fecha
     """)
     partidos = cursor.fetchall()
-    
+
     cursor.close()
     connection.close()
-    
+
     for partido in partidos:
         if partido['fecha']:
             if hasattr(partido['fecha'], 'strftime'):
@@ -258,26 +219,23 @@ def api_partidos_disponibles():
                 partido['hora'] = partido['hora'].strftime('%H:%M:%S')
             else:
                 partido['hora'] = str(partido['hora'])
-    
+
     return jsonify({'success': True, 'partidos': partidos})
 
 
-# =============================================
-# API ENDPOINT: Verificar si existe reserva
-# =============================================
 @app.route('/api/reserva_existente', methods=['POST'])
 def api_reserva_existente():
     data = request.get_json()
     socio_id = data.get('socio_id')
     partido_id = data.get('partido_id')
-    
+
     if not socio_id or not partido_id:
         return jsonify({'success': False, 'existe': False, 'mensaje': 'Faltan datos'}), 400
-    
+
     connection = get_db_connection()
     if connection is None:
         return jsonify({'success': False, 'existe': False, 'mensaje': 'Error de conexión'}), 500
-    
+
     cursor = connection.cursor(dictionary=True)
     cursor.execute("""
         SELECT plazaSocio, num_plazas_NO_socio, bonoUtilizado, precioApagar
@@ -285,16 +243,16 @@ def api_reserva_existente():
         WHERE socioID = %s AND partidoID = %s
     """, (socio_id, partido_id))
     reserva = cursor.fetchone()
-    
+
     cursor2 = connection.cursor(dictionary=True)
     cursor2.execute("SELECT bolsa FROM socio WHERE socioID = %s", (socio_id,))
     saldo = cursor2.fetchone()
     bolsa_actual = saldo['bolsa'] if saldo else 0
     cursor2.close()
-    
+
     cursor.close()
     connection.close()
-    
+
     if reserva:
         return jsonify({
             'success': True,
@@ -313,9 +271,6 @@ def api_reserva_existente():
         })
 
 
-# =============================================
-# API ENDPOINT: Crear o modificar reserva (único endpoint)
-# =============================================
 @app.route('/api/crear_reserva', methods=['POST'])
 def api_crear_reserva():
     data = request.get_json()
@@ -324,30 +279,28 @@ def api_crear_reserva():
     plaza_socio = data.get('plaza_socio', False)
     num_plazas_NO_socio = data.get('num_plazas_NO_socio', 0)
     usar_bolsa = data.get('usar_bolsa', False)
-    
+
     if not telefono or not partido_id:
         return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
-    
+
     socio = get_socio_by_tlf(telefono)
     if not socio:
         return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
-    
+
     socio_id = socio['socioID']
     exito, mensaje, coste, bono_utilizado = insertar_reserva(partido_id, socio_id, plaza_socio, num_plazas_NO_socio, usar_bolsa)
-    
+
     if not exito:
         return jsonify({'success': False, 'mensaje': mensaje}), 500
-    
-    # Obtener los detalles completos usando la función interna
+
     detalles = _obtener_detalles_reserva(socio_id, partido_id)
-    
+
     if not detalles:
         return jsonify({'success': True, 'mensaje': f'✅ {mensaje}'})
-    
-    # Construir mensaje detallado
+
     asiste_texto = "✅ Sí" if detalles['plazaSocio'] else "❌ No"
     bono_texto = "✅ Sí" if detalles['bonoUtilizado'] else "❌ No"
-    
+
     mensaje_detallado = f"""
 ✅ {mensaje}
 
@@ -367,35 +320,31 @@ def api_crear_reserva():
 💶 Precio a pagar (Se descontará del bono, si procede): {detalles['precioApagar']}€
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
-    
+
     return jsonify({'success': True, 'mensaje': mensaje_detallado})
 
 
-# =============================================
-# API ENDPOINT: Eliminar reserva
-# =============================================
 @app.route('/api/eliminar_reserva', methods=['POST'])
 def api_eliminar_reserva():
     data = request.get_json()
     telefono = data.get('telefono')
     partido_id = data.get('partido_id')
-    
+
     if not telefono or not partido_id:
         return jsonify({'success': False, 'mensaje': 'Faltan datos (teléfono o partido)'}), 400
-    
-    # Obtener socio por teléfono
+
     socio = get_socio_by_tlf(telefono)
     if not socio:
         return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
-    
+
     socio_id = socio['socioID']
-    
+
     connection = get_db_connection()
     if connection is None:
         return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
-    
+
     cursor = connection.cursor()
-    
+
     try:
         cursor.execute("DELETE FROM reservaplazas WHERE socioID = %s AND partidoID = %s", (socio_id, partido_id))
         connection.commit()
@@ -406,19 +355,17 @@ def api_eliminar_reserva():
         cursor.close()
         connection.close()
 
-# =============================================
-# API ENDPOINT: Obtener información de una reserva por socio y partido
-# =============================================
+
 @app.route('/api/reserva/<int:socio_id>/<int:partido_id>', methods=['GET'])
 def api_obtener_reserva(socio_id, partido_id):
     detalles = _obtener_detalles_reserva(socio_id, partido_id)
-    
+
     if not detalles:
         return jsonify({
-            'success': False, 
+            'success': False,
             'mensaje': f'No se encontró reserva para socio {socio_id} y partido {partido_id}'
         }), 404
-    
+
     resultado = {
         'success': True,
         'reserva': {
@@ -443,15 +390,10 @@ def api_obtener_reserva(socio_id, partido_id):
             'precio_apagar': float(detalles['precioApagar']) if detalles['precioApagar'] is not None else 0.00
         }
     }
-    
+
     return jsonify(resultado), 200
 
 
-# =============================================
-# INICIAR SERVIDOR
-# =============================================
 if __name__ == '__main__':
     print("🚀 Backend de reservas iniciado en http://localhost:5000")
-    print("📞 Identificación de socios por número de teléfono")
-    print("💰 La bolsa es meramente informativa: no se descuenta ni se actualiza")
     app.run(debug=True, host='0.0.0.0', port=5000)
