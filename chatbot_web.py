@@ -781,17 +781,41 @@ HTML = '''
 ℹ️ Si quieres consultar algún dato sobre tu bono, ampliarlo o cambiar el teléfono, avisa a tu administrador.
 `;
                 chatMessages.appendChild(botMsg);
-                setTimeout(() => {
-                    const reinicioMsg = document.createElement('div');
-                    reinicioMsg.className = 'message bot-message';
-                    reinicioMsg.innerHTML = '🔄 Puedes hacer una nueva reserva. Por favor, ingresa tu número de teléfono:';
-                    chatMessages.appendChild(reinicioMsg);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    sessionId = null;
-                    partidoSeleccionado = null;
-                    telefonoGlobal = null;
-                    sessionStorage.removeItem('telefonoGlobal');
-                    habilitarBotonEnviar(true);
+                               setTimeout(() => {
+                    // Volver a mostrar los partidos disponibles
+                    fetch(`${BACKEND_URL}/partidos_disponibles`)
+                    .then(response => response.json())
+                    .then(partidos => {
+                        const botMsg2 = document.createElement('div');
+                        botMsg2.className = 'message bot-message';
+                        if (partidos.success && partidos.partidos && partidos.partidos.length > 0) {
+                            let mensaje = 'Selecciona el partido para el que quieres reservar:\n\n';
+                            botMsg2.innerHTML = mensaje;
+                            const optionsDiv = document.createElement('div');
+                            optionsDiv.className = 'options-container';
+                            optionsDiv.id = 'opciones_partidos';
+                            partidos.partidos.forEach(p => {
+                                const btn = document.createElement('button');
+                                btn.textContent = `⚽ ${p.nombreEquipoVisitante} - ${p.fecha}`;
+                                btn.className = 'option-button';
+                                btn.dataset.partidoId = p.partidoID;
+                                btn.onclick = (e) => {
+                                    btn.disabled = true;
+                                    btn.style.opacity = '0.5';
+                                    btn.style.cursor = 'not-allowed';
+                                    seleccionarPartido(p.partidoID, btn.textContent);
+                                };
+                                optionsDiv.appendChild(btn);
+                            });
+                            botMsg2.appendChild(optionsDiv);
+                        } else {
+                            botMsg2.innerHTML = '⚠️ No hay partidos disponibles en este momento.';
+                        }
+                        chatMessages.appendChild(botMsg2);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        partidoSeleccionado = null;
+                        habilitarBotonEnviar(false);
+                    });
                 }, 2000);
             } else {
                 botMsg.innerHTML = '❌ ' + data.mensaje;
