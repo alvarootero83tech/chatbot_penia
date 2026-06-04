@@ -789,7 +789,7 @@ HTML = '''
                         const botMsg2 = document.createElement('div');
                         botMsg2.className = 'message bot-message';
                         if (partidos.success && partidos.partidos && partidos.partidos.length > 0) {
-                            let mensaje = 'Selecciona el partido para el que quieres reservar:\n\n';
+                            let mensaje = 'Selecciona el partido para el que quieres reservar:';
                             botMsg2.innerHTML = mensaje;
                             const optionsDiv = document.createElement('div');
                             optionsDiv.className = 'options-container';
