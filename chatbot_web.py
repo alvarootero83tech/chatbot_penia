@@ -796,7 +796,7 @@ HTML = '''
                             optionsDiv.id = 'opciones_partidos';
                             partidos.partidos.forEach(p => {
                                 const btn = document.createElement('button');
-                                btn.textContent = `⚽ ${p.nombreEquipoVisitante} - ${p.fecha}`;
+                                btn.textContent = '⚽ ${p.nombreEquipoVisitante} - ${p.fecha}';
                                 btn.className = 'option-button';
                                 btn.dataset.partidoId = p.partidoID;
                                 btn.onclick = (e) => {
