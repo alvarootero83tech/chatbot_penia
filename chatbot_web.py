@@ -128,6 +128,19 @@ HTML = '''
         .option-button:hover {
             background-color: #2a7db5;
         }
+        .option-button-admin {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .option-button-admin:hover {
+            background-color: #d35400;
+        }
         .options-container {
             display: flex;
             flex-wrap: wrap;
@@ -171,7 +184,7 @@ HTML = '''
 </head>
 <body>
     <h1>🤖 Chatbot de Reservas</h1>
-    <iframe src="https://chatbot-penia.onrender.com" width="0" height="0" style="border:0;" style="display:none;"></iframe>
+    <iframe src="https://chatbot-penia.onrender.com" width="0" height="0" style="border:0; display:none;"></iframe>
     <div class="chat-container">
         <div class="chat-messages" id="chatMessages">
             <div class="message bot-message">
@@ -219,6 +232,7 @@ HTML = '''
                 mensaje.innerHTML.includes('Modifica los detalles') ||
                 mensaje.innerHTML.includes('¿Qué deseas hacer?') ||
                 mensaje.innerHTML.includes('Ya tienes una reserva') ||
+                mensaje.innerHTML.includes('Bienvenido Administrador') ||
                 mensaje.querySelector('.options-container') ||
                 mensaje.querySelector('.formulario-reserva')) {
                 mensaje.remove();
@@ -229,6 +243,8 @@ HTML = '''
     function eliminarOpcionesPartidos() {
         const opcionesDiv = document.getElementById('opciones_partidos');
         if (opcionesDiv) opcionesDiv.remove();
+        const opcionesAdmin = document.getElementById('opciones_admin');
+        if (opcionesAdmin) opcionesAdmin.remove();
     }
     
     function limpiarMensajesYFormularios() {
@@ -318,7 +334,33 @@ HTML = '''
                     telefonoGlobal = data.telefono;
                     sessionStorage.setItem('telefonoGlobal', data.telefono);
                 }
-            } 
+            }
+            else if (data.tipo === 'opciones_admin') {
+                botMsg.innerHTML = data.mensaje;
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options-container';
+                optionsDiv.id = 'opciones_admin';
+                data.opciones.forEach(op => {
+                    const btn = document.createElement('button');
+                    btn.textContent = op.texto;
+                    btn.className = 'option-button-admin';
+                    btn.onclick = (e) => {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                        enviarRespuestaOpcion(op.valor);
+                    };
+                    optionsDiv.appendChild(btn);
+                });
+                botMsg.appendChild(optionsDiv);
+                chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
+                
+                if (data.telefono) {
+                    telefonoGlobal = data.telefono;
+                    sessionStorage.setItem('telefonoGlobal', data.telefono);
+                }
+            }
             else if (data.tipo === 'formulario_reserva') {
                 botMsg.innerHTML = data.mensaje;
                 const formDiv = document.createElement('div');
@@ -618,6 +660,26 @@ HTML = '''
                 chatMessages.appendChild(botMsg);
                 partidoSeleccionado = null;
                 habilitarBotonEnviar(false);
+            } else if (data.tipo === 'opciones_admin') {
+                botMsg.innerHTML = data.mensaje;
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options-container';
+                optionsDiv.id = 'opciones_admin';
+                data.opciones.forEach(op => {
+                    const btn = document.createElement('button');
+                    btn.textContent = op.texto;
+                    btn.className = 'option-button-admin';
+                    btn.onclick = (e) => {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                        enviarRespuestaOpcion(op.valor);
+                    };
+                    optionsDiv.appendChild(btn);
+                });
+                botMsg.appendChild(optionsDiv);
+                chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
             } else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
@@ -914,10 +976,28 @@ def chat():
             ).json()
 
             if resultado.get('success'):
-                sesion['paso'] = 'telefono_validado'
                 sesion['socio_id'] = resultado['socio_id']
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
+
+                # Verificar si es administrador
+                if resultado.get('administrador', False):
+                    sesion['paso'] = 'menu_admin'
+                    sesion['es_admin'] = True
+                    return jsonify({
+                        'tipo': 'opciones_admin',
+                        'mensaje': f"✅ ¡Bienvenido Administrador {resultado['nombre']}! 🔧\n\nSelecciona una opción:",
+                        'telefono': telefono,
+                        'opciones': [
+                            {'texto': '📋 Gestión de partidos', 'valor': 'admin_partidos'},
+                            {'texto': '🎫 Gestión de reservas', 'valor': 'admin_reservas'},
+                            {'texto': '👥 Gestión de socios', 'valor': 'admin_socios'},
+                            {'texto': '🔙 Salir (modo socio)', 'valor': 'admin_salir'}
+                        ]
+                    })
+
+                sesion['paso'] = 'telefono_validado'
+                sesion['es_admin'] = False
 
                 partidos = requests.get(
                     f"{BACKEND_URL}/partidos_disponibles",
@@ -967,6 +1047,58 @@ def opcion():
         return jsonify({'tipo': 'mensaje', 'mensaje': 'Sesión no válida. Por favor reinicia el chat.'})
 
     sesion = sesiones[session_id]
+
+    # --- OPCIONES DE ADMINISTRADOR ---
+    if opcion.startswith('admin_'):
+        if sesion.get('es_admin') != True:
+            return jsonify({'tipo': 'mensaje', 'mensaje': 'No tienes permisos de administrador.'})
+
+        if opcion == 'admin_partidos':
+            sesion['paso'] = 'admin_partidos'
+            return jsonify({
+                'tipo': 'mensaje',
+                'mensaje': '📋 GESTIÓN DE PARTIDOS\n\nPróximamente podrás crear, editar y eliminar partidos.\n\nEscribe *MENU* para volver al menú de administrador.'
+            })
+
+        elif opcion == 'admin_reservas':
+            sesion['paso'] = 'admin_reservas'
+            return jsonify({
+                'tipo': 'mensaje',
+                'mensaje': '🎫 GESTIÓN DE RESERVAS\n\nPróximamente podrás ver y gestionar todas las reservas.\n\nEscribe *MENU* para volver al menú de administrador.'
+            })
+
+        elif opcion == 'admin_socios':
+            sesion['paso'] = 'admin_socios'
+            return jsonify({
+                'tipo': 'mensaje',
+                'mensaje': '👥 GESTIÓN DE SOCIOS\n\nPróximamente podrás añadir, editar y eliminar socios.\n\nEscribe *MENU* para volver al menú de administrador.'
+            })
+
+        elif opcion == 'admin_salir':
+            sesion['paso'] = 'telefono_validado'
+            sesion['es_admin'] = False
+            partidos = requests.get(
+                f"{BACKEND_URL}/partidos_disponibles",
+                timeout=180
+            ).json()
+            if partidos.get('success') and partidos.get('partidos'):
+                opciones = []
+                for p in partidos['partidos']:
+                    opciones.append({
+                        'texto': f"⚽ {p['nombreEquipoVisitante']} - {p['fecha']}",
+                        'valor': f"partido_{p['partidoID']}",
+                        'partido_id': p['partidoID']
+                    })
+                return jsonify({
+                    'tipo': 'opciones',
+                    'mensaje': 'Selecciona el partido para el que quieres reservar:',
+                    'opciones': opciones
+                })
+            else:
+                return jsonify({
+                    'tipo': 'mensaje',
+                    'mensaje': '⚠️ No hay partidos disponibles para reservar en este momento.'
+                })
 
     if opcion.startswith('partido_'):
         partido_id = int(opcion.split('_')[1])

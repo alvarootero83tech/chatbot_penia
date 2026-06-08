@@ -44,7 +44,7 @@ def get_socio_by_tlf(telefono):
         return None
 
     cursor = connection.cursor(dictionary=True)
-    query = "SELECT socioID, nombre, apellidos, bolsa FROM socio WHERE tlf = %s"
+    query = "SELECT socioID, nombre, apellidos, bolsa, administrador FROM socio WHERE tlf = %s"
     cursor.execute(query, (telefono,))
     socio = cursor.fetchone()
 
@@ -184,7 +184,8 @@ def api_verificar_socio():
             'socio_id': socio['socioID'],
             'nombre': socio['nombre'],
             'apellidos': socio['apellidos'],
-            'bolsa': socio['bolsa']
+            'bolsa': socio['bolsa'],
+            'administrador': bool(socio.get('administrador', False))
         })
     else:
         return jsonify({'success': False, 'mensaje': 'Número no registrado'}), 404
