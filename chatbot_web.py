@@ -676,8 +676,7 @@ HTML = '''
         });
     }
     
-    function enviarRespuestaOpcion(valor) {
-        console.log('enviarRespuestaOpcion llamada con:', valor);
+       function enviarRespuestaOpcion(valor) {
         fetch('/api/opcion', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -747,6 +746,66 @@ HTML = '''
                 });
                 botMsg.appendChild(optionsDiv);
                 chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
+            } else if (data.tipo === 'formulario_crear_partido') {
+                botMsg.innerHTML = data.mensaje;
+                const formDiv = document.createElement('div');
+                formDiv.className = 'formulario-reserva';
+                formDiv.id = 'formulario_crear_partido';
+                
+                formDiv.innerHTML = `
+                    <div class="input-group">
+                        <label>⚽ Nombre del equipo visitante:</label>
+                        <input type="text" id="nombreVisitanteInput" placeholder="Ej: Real Madrid" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>📅 Fecha del partido (DÍA-MES-AÑO):</label>
+                        <input type="text" id="fechaPartidoInput" placeholder="DD-MM-AAAA" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>🕐 Hora del partido (HORA:MINUTO):</label>
+                        <input type="text" id="horaPartidoInput" placeholder="HH:MM" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>🏷️ Temporada:</label>
+                        <input type="text" id="temporadaInput" value="2025-2026" style="width: 200px;">
+                    </div>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="disponibleCheckbox">
+                            <span>✅ Partido disponible</span>
+                        </label>
+                    </div>
+                    <div class="input-group">
+                        <button id="btnConfirmarCrearPartido">➕ Crear partido</button>
+                    </div>
+                `;
+                botMsg.appendChild(formDiv);
+                chatMessages.appendChild(botMsg);
+                
+                const btnCrear = document.getElementById('btnConfirmarCrearPartido');
+                if (btnCrear) {
+                    btnCrear.onclick = () => {
+                        btnCrear.disabled = true;
+                        btnCrear.style.opacity = '0.5';
+                        btnCrear.style.cursor = 'not-allowed';
+                        const nombre = document.getElementById('nombreVisitanteInput').value.trim();
+                        const fecha = document.getElementById('fechaPartidoInput').value.trim();
+                        const hora = document.getElementById('horaPartidoInput').value.trim();
+                        const temporada = document.getElementById('temporadaInput').value.trim();
+                        const disponible = document.getElementById('disponibleCheckbox').checked;
+                        
+                        if (!nombre || !fecha || !hora) {
+                            alert('Nombre, fecha y hora son obligatorios');
+                            btnCrear.disabled = false;
+                            btnCrear.style.opacity = '1';
+                            btnCrear.style.cursor = 'pointer';
+                            return;
+                        }
+                        
+                        crearPartido(nombre, fecha, hora, temporada, disponible);
+                    };
+                }
                 habilitarBotonEnviar(false);
             } else {
                 botMsg.innerHTML = data.mensaje;
