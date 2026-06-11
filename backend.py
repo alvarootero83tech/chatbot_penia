@@ -493,6 +493,43 @@ def api_todos_partidos():
     return jsonify({'success': True, 'partidos': partidos})
 
 
+@app.route('/api/editar_partido', methods=['POST'])
+def api_editar_partido():
+    data = request.get_json()
+    partido_id = data.get('partido_id')
+    nombre_visitante = data.get('nombre_visitante', '').strip()
+    fecha = data.get('fecha', '').strip()
+    hora = data.get('hora', '').strip()
+    temporada = data.get('temporada', '').strip()
+    disponible = data.get('disponible', False)
+
+    if not partido_id or not nombre_visitante or not fecha or not hora:
+        return jsonify({'success': False, 'mensaje': 'Faltan datos obligatorios'}), 400
+
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+            UPDATE partido 
+            SET nombreEquipoVisitante = %s, 
+                fecha = STR_TO_DATE(%s, '%d-%m-%Y'), 
+                hora = %s, 
+                temporada = %s, 
+                disponible = %s
+            WHERE partidoID = %s
+        """, (nombre_visitante, fecha, hora, temporada, disponible, partido_id))
+        connection.commit()
+        return jsonify({'success': True, 'mensaje': '✅ Partido actualizado correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error al actualizar: {str(e)}'}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+
 if __name__ == '__main__':
     print("🚀 Backend de reservas iniciado en http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)
