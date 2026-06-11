@@ -1081,10 +1081,21 @@ def opcion():
                     mensaje += f"🏷️ {p['temporada']} | {p['tipoPartido']}\n"
                     mensaje += f"{estado}\n"
                     mensaje += "━━━━━━━━━━\n"
-                mensaje += '\nEscribe *MENU* para volver.'
-                return jsonify({'tipo': 'mensaje', 'mensaje': mensaje})
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': mensaje,
+                    'opciones': [
+                        {'texto': '🔙 Volver a Gestión de partidos', 'valor': 'admin_partidos'}
+                    ]
+                })
             else:
-                return jsonify({'tipo': 'mensaje', 'mensaje': '⚠️ No hay partidos registrados.'})
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': '⚠️ No hay partidos registrados.',
+                    'opciones': [
+                        {'texto': '🔙 Volver a Gestión de partidos', 'valor': 'admin_partidos'}
+                    ]
+                })
             
         elif opcion == 'admin_menu':
             sesion['paso'] = 'menu_admin'
