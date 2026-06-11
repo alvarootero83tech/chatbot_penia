@@ -224,6 +224,70 @@ def api_partidos_disponibles():
     return jsonify({'success': True, 'partidos': partidos})
 
 
+@app.route('/api/ultimos_partidos', methods=['GET'])
+def api_ultimos_partidos():
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT partidoID, nombreEquipoVisitante, fecha, hora, temporada, tipoPartido, disponible
+        FROM partido
+        ORDER BY fecha DESC
+        LIMIT 4
+    """)
+    partidos = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    for partido in partidos:
+        if partido['fecha']:
+            if hasattr(partido['fecha'], 'strftime'):
+                partido['fecha'] = partido['fecha'].strftime('%d-%m-%Y')
+            else:
+                partido['fecha'] = str(partido['fecha'])
+        if partido['hora']:
+            if hasattr(partido['hora'], 'strftime'):
+                partido['hora'] = partido['hora'].strftime('%H:%M')
+            else:
+                partido['hora'] = str(partido['hora'])
+
+    return jsonify({'success': True, 'partidos': partidos})
+
+
+@app.route('/api/crear_partido', methods=['POST'])
+def api_crear_partido():
+    data = request.get_json()
+    nombre_visitante = data.get('nombre_visitante', '').strip()
+    fecha = data.get('fecha', '').strip()
+    hora = data.get('hora', '').strip()
+    temporada = data.get('temporada', '2025-2026').strip()
+    disponible = data.get('disponible', False)
+
+    if not nombre_visitante or not fecha or not hora:
+        return jsonify({'success': False, 'mensaje': 'Todos los campos son obligatorios'}), 400
+
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
+
+    cursor = connection.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO partido (nombreEquipoVisitante, fecha, hora, temporada, tipoPartido, disponible)
+            VALUES (%s, STR_TO_DATE(%s, '%d-%m-%Y'), %s, %s, 'Liga', %s)
+        """, (nombre_visitante, fecha, hora, temporada, disponible))
+        connection.commit()
+        return jsonify({'success': True, 'mensaje': '✅ Partido creado correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error al crear: {str(e)}'}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+
 @app.route('/api/reserva_existente', methods=['POST'])
 def api_reserva_existente():
     data = request.get_json()
@@ -395,40 +459,6 @@ def api_obtener_reserva(socio_id, partido_id):
     }
 
     return jsonify(resultado), 200
-
-
-@app.route('/api/ultimos_partidos', methods=['GET'])
-def api_ultimos_partidos():
-    connection = get_db_connection()
-    if connection is None:
-        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
-
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT partidoID, nombreEquipoVisitante, fecha, hora, temporada, tipoPartido, disponible
-        FROM partido
-        ORDER BY fecha DESC
-        LIMIT 4
-    """)
-    partidos = cursor.fetchall()
-
-    cursor.close()
-    connection.close()
-
-    for partido in partidos:
-        if partido['fecha']:
-            if hasattr(partido['fecha'], 'strftime'):
-                partido['fecha'] = partido['fecha'].strftime('%d-%m-%Y')
-            else:
-                partido['fecha'] = str(partido['fecha'])
-        if partido['hora']:
-            if hasattr(partido['hora'], 'strftime'):
-                partido['hora'] = partido['hora'].strftime('%H:%M')
-            else:
-                partido['hora'] = str(partido['hora'])
-
-    return jsonify({'success': True, 'partidos': partidos})
-
 
 
 if __name__ == '__main__':
