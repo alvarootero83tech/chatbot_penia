@@ -461,6 +461,38 @@ def api_obtener_reserva(socio_id, partido_id):
     return jsonify(resultado), 200
 
 
+@app.route('/api/todos_partidos', methods=['GET'])
+def api_todos_partidos():
+    connection = get_db_connection()
+    if connection is None:
+        return jsonify({'success': False, 'mensaje': 'Error de conexión'}), 500
+
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT partidoID, nombreEquipoVisitante, fecha, hora, temporada, tipoPartido, disponible
+        FROM partido
+        ORDER BY fecha DESC
+    """)
+    partidos = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    for partido in partidos:
+        if partido['fecha']:
+            if hasattr(partido['fecha'], 'strftime'):
+                partido['fecha'] = partido['fecha'].strftime('%d-%m-%Y')
+            else:
+                partido['fecha'] = str(partido['fecha'])
+        if partido['hora']:
+            if hasattr(partido['hora'], 'strftime'):
+                partido['hora'] = partido['hora'].strftime('%H:%M')
+            else:
+                partido['hora'] = str(partido['hora'])
+
+    return jsonify({'success': True, 'partidos': partidos})
+
+
 if __name__ == '__main__':
     print("🚀 Backend de reservas iniciado en http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -223,6 +223,8 @@ HTML = '''
         if (formularioModificacion) formularioModificacion.remove();
         const formularioCrearPartido = document.getElementById('formulario_crear_partido');
         if (formularioCrearPartido) formularioCrearPartido.remove();
+        const formularioEditarPartido = document.getElementById('formulario_editar_partido');
+        if (formularioEditarPartido) formularioEditarPartido.remove();
     }
     
     function eliminarMensajesBotAnteriores() {
@@ -288,8 +290,6 @@ HTML = '''
         .then(response => response.json())
         .then(data => {
             limpiarMensajesYFormularios();
-            console.log('TIPO RECIBIDO:', data.tipo);
-            console.log('DATA COMPLETA:', data);
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             
@@ -414,68 +414,6 @@ HTML = '''
                         const invitados = obtenerInvitados('invitadosInput');
                         const usarBolsa = document.getElementById('usarBolsaCheckbox') ? document.getElementById('usarBolsaCheckbox').checked : false;
                         enviarReserva(data.partido_id, asiste, invitados, usarBolsa);
-                    };
-                }
-                habilitarBotonEnviar(false);
-            }
-            else if (data.tipo === 'formulario_crear_partido') {
-                console.log('ENTRÓ EN formulario_crear_partido');
-                botMsg.innerHTML = data.mensaje;
-                const formDiv = document.createElement('div');
-                formDiv.className = 'formulario-reserva';
-                formDiv.id = 'formulario_crear_partido';
-                
-                formDiv.innerHTML = `
-                    <div class="input-group">
-                        <label>⚽ Nombre del equipo visitante:</label>
-                        <input type="text" id="nombreVisitanteInput" placeholder="Ej: Real Madrid" style="width: 200px;">
-                    </div>
-                    <div class="input-group">
-                        <label>📅 Fecha del partido (DÍA-MES-AÑO):</label>
-                        <input type="text" id="fechaPartidoInput" placeholder="DD-MM-AAAA" style="width: 200px;">
-                    </div>
-                    <div class="input-group">
-                        <label>🕐 Hora del partido (HORA:MINUTO):</label>
-                        <input type="text" id="horaPartidoInput" placeholder="HH:MM" style="width: 200px;">
-                    </div>
-                    <div class="input-group">
-                        <label>🏷️ Temporada:</label>
-                        <input type="text" id="temporadaInput" value="2025-2026" style="width: 200px;">
-                    </div>
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="disponibleCheckbox">
-                            <span>✅ Partido disponible</span>
-                        </label>
-                    </div>
-                    <div class="input-group">
-                        <button id="btnConfirmarCrearPartido">➕ Crear partido</button>
-                    </div>
-                `;
-                botMsg.appendChild(formDiv);
-                chatMessages.appendChild(botMsg);
-                
-                const btnCrear = document.getElementById('btnConfirmarCrearPartido');
-                if (btnCrear) {
-                    btnCrear.onclick = () => {
-                        btnCrear.disabled = true;
-                        btnCrear.style.opacity = '0.5';
-                        btnCrear.style.cursor = 'not-allowed';
-                        const nombre = document.getElementById('nombreVisitanteInput').value.trim();
-                        const fecha = document.getElementById('fechaPartidoInput').value.trim();
-                        const hora = document.getElementById('horaPartidoInput').value.trim();
-                        const temporada = document.getElementById('temporadaInput').value.trim();
-                        const disponible = document.getElementById('disponibleCheckbox').checked;
-                        
-                        if (!nombre || !fecha || !hora) {
-                            alert('Nombre, fecha y hora son obligatorios');
-                            btnCrear.disabled = false;
-                            btnCrear.style.opacity = '1';
-                            btnCrear.style.cursor = 'pointer';
-                            return;
-                        }
-                        
-                        crearPartido(nombre, fecha, hora, temporada, disponible);
                     };
                 }
                 habilitarBotonEnviar(false);
@@ -676,7 +614,7 @@ HTML = '''
         });
     }
     
-       function enviarRespuestaOpcion(valor) {
+    function enviarRespuestaOpcion(valor) {
         fetch('/api/opcion', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -684,7 +622,6 @@ HTML = '''
         })
         .then(response => response.json())
         .then(data => {
-            console.log('RESPUESTA OPCION:', data);
             limpiarMensajesYFormularios();
             const chatMessages = document.getElementById('chatMessages');
             const botMsg = document.createElement('div');
@@ -804,6 +741,67 @@ HTML = '''
                         }
                         
                         crearPartido(nombre, fecha, hora, temporada, disponible);
+                    };
+                }
+                habilitarBotonEnviar(false);
+            } else if (data.tipo === 'formulario_editar_partido') {
+                const p = data.partido;
+                botMsg.innerHTML = data.mensaje;
+                const formDiv = document.createElement('div');
+                formDiv.className = 'formulario-reserva';
+                formDiv.id = 'formulario_editar_partido';
+                
+                formDiv.innerHTML = `
+                    <div class="input-group">
+                        <label>⚽ Nombre del equipo visitante:</label>
+                        <input type="text" id="editNombreInput" value="${p.nombreEquipoVisitante}" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>📅 Fecha del partido (DÍA-MES-AÑO):</label>
+                        <input type="text" id="editFechaInput" value="${p.fecha}" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>🕐 Hora del partido (HORA:MINUTO):</label>
+                        <input type="text" id="editHoraInput" value="${p.hora}" style="width: 200px;">
+                    </div>
+                    <div class="input-group">
+                        <label>🏷️ Temporada:</label>
+                        <input type="text" id="editTemporadaInput" value="${p.temporada}" style="width: 200px;">
+                    </div>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="editDisponibleCheckbox" ${p.disponible ? 'checked' : ''}>
+                            <span>✅ Partido disponible</span>
+                        </label>
+                    </div>
+                    <div class="input-group">
+                        <button id="btnConfirmarEditarPartido">✏️ Guardar cambios</button>
+                    </div>
+                `;
+                botMsg.appendChild(formDiv);
+                chatMessages.appendChild(botMsg);
+                
+                const btnEditar = document.getElementById('btnConfirmarEditarPartido');
+                if (btnEditar) {
+                    btnEditar.onclick = () => {
+                        btnEditar.disabled = true;
+                        btnEditar.style.opacity = '0.5';
+                        btnEditar.style.cursor = 'not-allowed';
+                        const nombre = document.getElementById('editNombreInput').value.trim();
+                        const fecha = document.getElementById('editFechaInput').value.trim();
+                        const hora = document.getElementById('editHoraInput').value.trim();
+                        const temporada = document.getElementById('editTemporadaInput').value.trim();
+                        const disponible = document.getElementById('editDisponibleCheckbox').checked;
+                        
+                        if (!nombre || !fecha || !hora) {
+                            alert('Nombre, fecha y hora son obligatorios');
+                            btnEditar.disabled = false;
+                            btnEditar.style.opacity = '1';
+                            btnEditar.style.cursor = 'pointer';
+                            return;
+                        }
+                        
+                        editarPartido(p.partidoID, nombre, fecha, hora, temporada, disponible);
                     };
                 }
                 habilitarBotonEnviar(false);
@@ -1114,6 +1112,67 @@ HTML = '''
         });
     }
     
+    function editarPartido(partidoId, nombre, fecha, hora, temporada, disponible) {
+        const chatMessages = document.getElementById('chatMessages');
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'message bot-message';
+        loadingMsg.innerHTML = '⏳ Guardando cambios...';
+        loadingMsg.id = 'loading_msg';
+        chatMessages.appendChild(loadingMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        fetch(`${BACKEND_URL}/editar_partido`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                partido_id: partidoId,
+                nombre_visitante: nombre,
+                fecha: fecha,
+                hora: hora,
+                temporada: temporada,
+                disponible: disponible
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const loading = document.getElementById('loading_msg');
+            if (loading) loading.remove();
+            const formulario = document.getElementById('formulario_editar_partido');
+            if (formulario) formulario.remove();
+            
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = data.mensaje;
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options-container';
+            const btnVolver = document.createElement('button');
+            btnVolver.textContent = '🔙 Volver a Gestión de partidos';
+            btnVolver.className = 'option-button-admin';
+            btnVolver.onclick = () => {
+                btnVolver.disabled = true;
+                enviarRespuestaOpcion('admin_partidos');
+            };
+            optionsDiv.appendChild(btnVolver);
+            botMsg.appendChild(optionsDiv);
+            
+            chatMessages.appendChild(botMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            habilitarBotonEnviar(false);
+        })
+        .catch(error => {
+            console.error(error);
+            const loading = document.getElementById('loading_msg');
+            if (loading) loading.remove();
+            const botMsg = document.createElement('div');
+            botMsg.className = 'message bot-message';
+            botMsg.innerHTML = '⚠️ Error de conexión';
+            chatMessages.appendChild(botMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            habilitarBotonEnviar(false);
+        });
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('messageInput');
         const boton = document.getElementById('btnEnviar');
@@ -1168,7 +1227,6 @@ def chat():
                 sesion['socio_nombre'] = resultado['nombre']
                 sesion['telefono'] = telefono
 
-                # Verificar si es administrador
                 if resultado.get('administrador', False):
                     sesion['paso'] = 'menu_admin'
                     sesion['es_admin'] = True
@@ -1291,6 +1349,62 @@ def opcion():
                 'tipo': 'formulario_crear_partido',
                 'mensaje': '➕ CREAR PARTIDO\n\nCompleta los datos:'
             })
+
+        elif opcion == 'admin_editar_partido':
+            sesion['paso'] = 'admin_editar_partido'
+            partidos = requests.get(
+                f"{BACKEND_URL}/todos_partidos",
+                timeout=180
+            ).json()
+            if partidos.get('success') and partidos.get('partidos'):
+                opciones = []
+                for p in partidos['partidos']:
+                    estado = '✅' if p.get('disponible') else '❌'
+                    opciones.append({
+                        'texto': f"{estado} {p['nombreEquipoVisitante']} - {p['fecha']} {p['hora']}",
+                        'valor': f"admin_editar_partido_{p['partidoID']}",
+                        'partido_id': p['partidoID']
+                    })
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': '✏️ EDITAR PARTIDO\n\nSelecciona el partido a editar:',
+                    'opciones': opciones
+                })
+            else:
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': '⚠️ No hay partidos registrados.',
+                    'opciones': [
+                        {'texto': '🔙 Volver', 'valor': 'admin_partidos'}
+                    ]
+                })
+
+        elif opcion.startswith('admin_editar_partido_'):
+            partido_id = int(opcion.split('admin_editar_partido_')[1])
+            sesion['partido_seleccionado'] = partido_id
+            sesion['paso'] = 'admin_editando_partido'
+            
+            partidos = requests.get(
+                f"{BACKEND_URL}/todos_partidos",
+                timeout=180
+            ).json()
+            partido = None
+            for p in partidos.get('partidos', []):
+                if p['partidoID'] == partido_id:
+                    partido = p
+                    break
+            
+            if partido:
+                return jsonify({
+                    'tipo': 'formulario_editar_partido',
+                    'mensaje': f"✏️ EDITAR: {partido['nombreEquipoVisitante']}",
+                    'partido': partido
+                })
+            else:
+                return jsonify({
+                    'tipo': 'mensaje',
+                    'mensaje': '⚠️ Partido no encontrado.'
+                })
 
         elif opcion == 'admin_menu':
             sesion['paso'] = 'menu_admin'
