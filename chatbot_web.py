@@ -203,6 +203,7 @@ HTML = '''
     let sessionId = null;
     let partidoSeleccionado = null;
     let telefonoGlobal = sessionStorage.getItem('telefonoGlobal') || null;
+    let adminSocioId = null;  // Para guardar el socio_id cuando el admin modifica
     const BACKEND_URL = "{{ backend_url }}";
     
     function generarSessionId() {
@@ -225,6 +226,8 @@ HTML = '''
         if (formularioCrearPartido) formularioCrearPartido.remove();
         const formularioEditarPartido = document.getElementById('formulario_editar_partido');
         if (formularioEditarPartido) formularioEditarPartido.remove();
+        const formularioBuscarSocio = document.getElementById('formulario_buscar_socio');
+        if (formularioBuscarSocio) formularioBuscarSocio.remove();
     }
     
     function eliminarMensajesBotAnteriores() {
@@ -237,6 +240,7 @@ HTML = '''
                 mensaje.innerHTML.includes('¿Qué deseas hacer?') ||
                 mensaje.innerHTML.includes('Ya tienes una reserva') ||
                 mensaje.innerHTML.includes('Bienvenido Administrador') ||
+                mensaje.innerHTML.includes('Introduce el') ||
                 mensaje.querySelector('.options-container') ||
                 mensaje.querySelector('.formulario-reserva')) {
                 mensaje.remove();
@@ -418,6 +422,66 @@ HTML = '''
                 }
                 habilitarBotonEnviar(false);
             }
+            else if (data.tipo === 'opciones_reserva_existente') {
+                botMsg.innerHTML = data.mensaje;
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options-container';
+                data.opciones.forEach(op => {
+                    const btn = document.createElement('button');
+                    btn.textContent = op.texto;
+                    btn.className = 'option-button';
+                    btn.onclick = () => {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                        if (op.valor === 'cancelar') {
+                            enviarConfirmacionEliminar(data.partido_id, data.bono_utilizado);
+                        } else if (op.valor === 'modificar') {
+                            mostrarFormularioModificacion(data.partido_id, data.asiste_actual, data.invitados_actual, data.bolsa_actual);
+                        } else if (op.valor === 'salir') {
+                            enviarRespuestaOpcion('menu_principal');
+                        } else if (op.valor === 'volver_admin') {
+                            enviarRespuestaOpcion('admin_modificar_reserva');
+                        }
+                    };
+                    optionsDiv.appendChild(btn);
+                });
+                botMsg.appendChild(optionsDiv);
+                chatMessages.appendChild(botMsg);
+                habilitarBotonEnviar(false);
+            }
+            else if (data.tipo === 'formulario_modificar') {
+                mostrarFormularioModificacion(data.partido_id, data.asiste, data.invitados, data.bolsa_actual);
+            }
+            else if (data.tipo === 'formulario_buscar_socio') {
+                botMsg.innerHTML = data.mensaje;
+                const formDiv = document.createElement('div');
+                formDiv.className = 'formulario-reserva';
+                formDiv.id = 'formulario_buscar_socio';
+                formDiv.innerHTML = `
+                    <div class="input-group">
+                        <label>👤 ID del socio:</label>
+                        <input type="number" id="socioIdInput" placeholder="Ej: 123" style="width: 150px;">
+                        <button id="btnBuscarSocio">🔍 Buscar</button>
+                    </div>
+                `;
+                botMsg.appendChild(formDiv);
+                chatMessages.appendChild(botMsg);
+                
+                const btnBuscar = document.getElementById('btnBuscarSocio');
+                if (btnBuscar) {
+                    btnBuscar.onclick = () => {
+                        const socioId = document.getElementById('socioIdInput').value.trim();
+                        if (!socioId) {
+                            alert('Introduce un ID de socio');
+                            return;
+                        }
+                        document.getElementById('messageInput').value = socioId;
+                        enviarMensaje();
+                    };
+                }
+                habilitarBotonEnviar(false);
+            }
             else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
@@ -442,7 +506,7 @@ HTML = '''
         const chatMessages = document.getElementById('chatMessages');
         const botMsg = document.createElement('div');
         botMsg.className = 'message bot-message';
-        botMsg.innerHTML = "✏️ Modifica los detalles de tu reserva:";
+        botMsg.innerHTML = "✏️ Modifica los detalles de la reserva:";
         
         const formDiv = document.createElement('div');
         formDiv.className = 'formulario-reserva';
@@ -805,6 +869,34 @@ HTML = '''
                     };
                 }
                 habilitarBotonEnviar(false);
+            } else if (data.tipo === 'formulario_buscar_socio') {
+                botMsg.innerHTML = data.mensaje;
+                const formDiv = document.createElement('div');
+                formDiv.className = 'formulario-reserva';
+                formDiv.id = 'formulario_buscar_socio';
+                formDiv.innerHTML = `
+                    <div class="input-group">
+                        <label>👤 ID del socio:</label>
+                        <input type="number" id="socioIdInput" placeholder="Ej: 123" style="width: 150px;">
+                        <button id="btnBuscarSocio">🔍 Buscar</button>
+                    </div>
+                `;
+                botMsg.appendChild(formDiv);
+                chatMessages.appendChild(botMsg);
+                
+                const btnBuscar = document.getElementById('btnBuscarSocio');
+                if (btnBuscar) {
+                    btnBuscar.onclick = () => {
+                        const socioId = document.getElementById('socioIdInput').value.trim();
+                        if (!socioId) {
+                            alert('Introduce un ID de socio');
+                            return;
+                        }
+                        document.getElementById('messageInput').value = socioId;
+                        enviarMensaje();
+                    };
+                }
+                habilitarBotonEnviar(false);
             } else {
                 botMsg.innerHTML = data.mensaje;
                 chatMessages.appendChild(botMsg);
@@ -875,10 +967,6 @@ HTML = '''
     }
     
     function enviarModificacion(partidoId, asiste, invitados, usarBolsa) {
-        if (!telefonoGlobal) {
-            alert('No hay teléfono registrado. Reinicia el chat.');
-            return;
-        }
         const chatMessages = document.getElementById('chatMessages');
         const loadingMsg = document.createElement('div');
         loadingMsg.className = 'message bot-message';
@@ -887,16 +975,29 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        fetch(`${BACKEND_URL}/crear_reserva`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
+        // Si hay telefonoGlobal, es un socio normal. Si no, es el admin modificando con adminSocioId
+        const body = telefonoGlobal 
+            ? {
                 telefono: telefonoGlobal,
                 partido_id: partidoId,
                 plaza_socio: asiste,
                 num_plazas_NO_socio: invitados,
                 usar_bolsa: usarBolsa
-            })
+              }
+            : {
+                socio_id: adminSocioId,
+                partido_id: partidoId,
+                plaza_socio: asiste,
+                num_plazas_NO_socio: invitados,
+                usar_bolsa: usarBolsa
+              };
+        
+        const endpoint = telefonoGlobal ? `${BACKEND_URL}/crear_reserva` : `${BACKEND_URL}/crear_reserva`;
+        
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
         })
         .then(response => response.json())
         .then(data => {
@@ -914,12 +1015,15 @@ HTML = '''
             });
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
-            botMsg.innerHTML = data.mensaje;
+            botMsg.innerHTML = data.mensaje || '✅ Reserva modificada correctamente';
             chatMessages.appendChild(botMsg);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             partidoSeleccionado = null;
-            telefonoGlobal = null;
-            sessionStorage.removeItem('telefonoGlobal');
+            if (telefonoGlobal) {
+                telefonoGlobal = null;
+                sessionStorage.removeItem('telefonoGlobal');
+            }
+            adminSocioId = null;
             sessionId = null;
             habilitarBotonEnviar(true);
         })
@@ -1280,6 +1384,46 @@ def chat():
                 'mensaje': '📞 Por favor, ingresa un número de teléfono válido con formato internacional.\nEjemplo: +34123456789'
             })
 
+    if sesion.get('paso') == 'admin_pedir_socio_id':
+        socio_id = texto.strip()
+        partido_id = sesion.get('partido_seleccionado')
+        
+        if not socio_id.isdigit():
+            return jsonify({'tipo': 'mensaje', 'mensaje': '❌ El ID debe ser un número.'})
+        
+        reserva = requests.post(
+            f"{BACKEND_URL}/reserva_existente",
+            json={'socio_id': int(socio_id), 'partido_id': partido_id},
+            timeout=180
+        ).json()
+        
+        if reserva.get('existe'):
+            sesion['paso'] = 'admin_editando_reserva'
+            sesion['socio_id_reserva'] = int(socio_id)
+            sesion['reserva_actual'] = reserva
+            return jsonify({
+                'tipo': 'opciones_reserva_existente',
+                'mensaje': f"📋 Reserva del socio {socio_id}:\n• Asistes: {'✅ Sí' if reserva.get('plaza_socio') else '❌ No'}\n• Invitados: {reserva.get('num_invitados', 0)}\n• Bono: {'✅ Sí' if reserva.get('bono_utilizado') else '❌ No'}\n\n¿Qué deseas hacer?",
+                'partido_id': partido_id,
+                'bono_utilizado': reserva.get('bono_utilizado', False),
+                'asiste_actual': reserva.get('plaza_socio', False),
+                'invitados_actual': reserva.get('num_invitados', 0),
+                'bolsa_actual': reserva.get('bolsa_actual', 0),
+                'socio_id_admin': int(socio_id),
+                'opciones': [
+                    {'texto': '✏️ Modificar', 'valor': 'modificar'},
+                    {'texto': '🔙 Volver', 'valor': 'volver_admin'}
+                ]
+            })
+        else:
+            return jsonify({
+                'tipo': 'opciones_admin',
+                'mensaje': '❌ Este socio no tiene reserva para este partido.',
+                'opciones': [
+                    {'texto': '🔙 Volver a elegir partido', 'valor': 'admin_modificar_reserva'}
+                ]
+            })
+
     return jsonify({'tipo': 'mensaje', 'mensaje': 'Comando no reconocido.'})
 
 
@@ -1430,6 +1574,43 @@ def opcion():
                     {'texto': '📥 Descargar listado de reservas', 'valor': 'admin_descargar_reservas'},
                     {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
                 ]
+            })
+
+        elif opcion == 'admin_modificar_reserva':
+            sesion['paso'] = 'admin_modificar_reserva'
+            partidos = requests.get(
+                f"{BACKEND_URL}/partidos_disponibles",
+                timeout=180
+            ).json()
+            if partidos.get('success') and partidos.get('partidos'):
+                opciones = []
+                for p in partidos['partidos']:
+                    opciones.append({
+                        'texto': f"⚽ {p['nombreEquipoVisitante']} - {p['fecha']}",
+                        'valor': f"admin_mod_reserva_{p['partidoID']}",
+                        'partido_id': p['partidoID']
+                    })
+                opciones.append({'texto': '🔙 Volver al menú', 'valor': 'admin_reservas'})
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': '✏️ MODIFICAR RESERVA\n\nSelecciona el partido:',
+                    'opciones': opciones
+                })
+            else:
+                return jsonify({
+                    'tipo': 'opciones_admin',
+                    'mensaje': '⚠️ No hay partidos disponibles.',
+                    'opciones': [{'texto': '🔙 Volver', 'valor': 'admin_reservas'}]
+                })
+
+        elif opcion.startswith('admin_mod_reserva_'):
+            partido_id = int(opcion.split('admin_mod_reserva_')[1])
+            sesion['partido_seleccionado'] = partido_id
+            sesion['paso'] = 'admin_pedir_socio_id'
+            return jsonify({
+                'tipo': 'formulario_buscar_socio',
+                'mensaje': '🔍 Introduce el *ID del socio* para modificar su reserva:',
+                'partido_id': partido_id
             })
 
         elif opcion == 'admin_socios':
