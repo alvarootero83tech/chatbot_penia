@@ -1095,8 +1095,14 @@ def opcion():
         elif opcion == 'admin_reservas':
             sesion['paso'] = 'admin_reservas'
             return jsonify({
-                'tipo': 'mensaje',
-                'mensaje': '🎫 GESTIÓN DE RESERVAS\n\nPróximamente podrás ver y gestionar todas las reservas.\n\nEscribe *MENU* para volver al menú de administrador.'
+                'tipo': 'opciones_admin',
+                'mensaje': '🎫 GESTIÓN DE RESERVAS\n\nSelecciona una opción:',
+                'opciones': [
+                    {'texto': '✏️ Modificar reserva', 'valor': 'admin_modificar_reserva'},
+                    {'texto': '❌ Eliminar reserva', 'valor': 'admin_eliminar_reserva'},
+                    {'texto': '📥 Descargar listado de reservas', 'valor': 'admin_descargar_reservas'},
+                    {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
+                ]
             })
 
         elif opcion == 'admin_socios':
