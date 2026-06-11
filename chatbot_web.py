@@ -677,6 +677,7 @@ HTML = '''
     }
     
     function enviarRespuestaOpcion(valor) {
+        console.log('enviarRespuestaOpcion llamada con:', valor);
         fetch('/api/opcion', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
