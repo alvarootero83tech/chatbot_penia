@@ -417,6 +417,7 @@ HTML = '''
                 habilitarBotonEnviar(false);
             }
             else if (data.tipo === 'formulario_crear_partido') {
+                console.log('ENTRÓ EN formulario_crear_partido');
                 botMsg.innerHTML = data.mensaje;
                 const formDiv = document.createElement('div');
                 formDiv.className = 'formulario-reserva';
