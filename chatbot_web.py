@@ -1056,8 +1056,40 @@ def opcion():
         if opcion == 'admin_partidos':
             sesion['paso'] = 'admin_partidos'
             return jsonify({
-                'tipo': 'mensaje',
-                'mensaje': '📋 GESTIÓN DE PARTIDOS\n\nPróximamente podrás crear, editar y eliminar partidos.\n\nEscribe *MENU* para volver al menú de administrador.'
+                'tipo': 'opciones_admin',
+                'mensaje': '📋 GESTIÓN DE PARTIDOS\n\nSelecciona una opción:',
+                'opciones': [
+                    {'texto': '📋 Ver últimos 4 partidos', 'valor': 'admin_ver_partidos'},
+                    {'texto': '➕ Crear partido', 'valor': 'admin_crear_partido'},
+                    {'texto': '✏️ Editar partido', 'valor': 'admin_editar_partido'},
+                    {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
+                ]
+            })
+
+        if opcion == 'admin_partidos':
+            sesion['paso'] = 'admin_partidos'
+            return jsonify({
+                'tipo': 'opciones_admin',
+                'mensaje': '📋 GESTIÓN DE PARTIDOS\n\nSelecciona una opción:',
+                'opciones': [
+                    {'texto': '📋 Ver últimos 4 partidos', 'valor': 'admin_ver_partidos'},
+                    {'texto': '➕ Crear partido', 'valor': 'admin_crear_partido'},
+                    {'texto': '✏️ Editar partido', 'valor': 'admin_editar_partido'},
+                    {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
+                ]
+            })
+
+        elif opcion == 'admin_menu':
+            sesion['paso'] = 'menu_admin'
+            return jsonify({
+                'tipo': 'opciones_admin',
+                'mensaje': '✅ Menú de Administrador\n\nSelecciona una opción:',
+                'opciones': [
+                    {'texto': '📋 Gestión de partidos', 'valor': 'admin_partidos'},
+                    {'texto': '🎫 Gestión de reservas', 'valor': 'admin_reservas'},
+                    {'texto': '👥 Gestión de socios', 'valor': 'admin_socios'},
+                    {'texto': '🔙 Salir (modo socio)', 'valor': 'admin_salir'}
+                ]
             })
 
         elif opcion == 'admin_reservas':
