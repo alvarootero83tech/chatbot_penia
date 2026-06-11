@@ -1065,20 +1065,27 @@ def opcion():
                     {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
                 ]
             })
-
-        if opcion == 'admin_partidos':
+        
+        elif opcion == 'admin_ver_partidos':
             sesion['paso'] = 'admin_partidos'
-            return jsonify({
-                'tipo': 'opciones_admin',
-                'mensaje': '📋 GESTIÓN DE PARTIDOS\n\nSelecciona una opción:',
-                'opciones': [
-                    {'texto': '📋 Ver últimos 4 partidos', 'valor': 'admin_ver_partidos'},
-                    {'texto': '➕ Crear partido', 'valor': 'admin_crear_partido'},
-                    {'texto': '✏️ Editar partido', 'valor': 'admin_editar_partido'},
-                    {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
-                ]
-            })
-
+            partidos = requests.get(
+                f"{BACKEND_URL}/ultimos_partidos",
+                timeout=180
+            ).json()
+            if partidos.get('success') and partidos.get('partidos'):
+                mensaje = '📋 ÚLTIMOS 4 PARTIDOS:\n\n'
+                for p in partidos['partidos']:
+                    estado = '✅ Disponible' if p.get('disponible') else '❌ No disponible'
+                    mensaje += f"⚽ {p['nombreEquipoVisitante']}\n"
+                    mensaje += f"📅 {p['fecha']} 🕐 {p['hora']}\n"
+                    mensaje += f"🏷️ {p['temporada']} | {p['tipoPartido']}\n"
+                    mensaje += f"{estado}\n"
+                    mensaje += "━━━━━━━━━━\n"
+                mensaje += '\nEscribe *MENU* para volver.'
+                return jsonify({'tipo': 'mensaje', 'mensaje': mensaje})
+            else:
+                return jsonify({'tipo': 'mensaje', 'mensaje': '⚠️ No hay partidos registrados.'})
+            
         elif opcion == 'admin_menu':
             sesion['paso'] = 'menu_admin'
             return jsonify({
@@ -1108,8 +1115,14 @@ def opcion():
         elif opcion == 'admin_socios':
             sesion['paso'] = 'admin_socios'
             return jsonify({
-                'tipo': 'mensaje',
-                'mensaje': '👥 GESTIÓN DE SOCIOS\n\nPróximamente podrás añadir, editar y eliminar socios.\n\nEscribe *MENU* para volver al menú de administrador.'
+                'tipo': 'opciones_admin',
+                'mensaje': '👥 GESTIÓN DE SOCIOS\n\nSelecciona una opción:',
+                'opciones': [
+                    {'texto': '➕ Añadir socio', 'valor': 'admin_anadir_socio'},
+                    {'texto': '✏️ Modificar socio', 'valor': 'admin_modificar_socio'},
+                    {'texto': '❌ Eliminar socio', 'valor': 'admin_eliminar_socio'},
+                    {'texto': '🔙 Volver al menú', 'valor': 'admin_menu'}
+                ]
             })
 
         elif opcion == 'admin_salir':
