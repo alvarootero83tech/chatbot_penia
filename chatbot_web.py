@@ -203,7 +203,7 @@ HTML = '''
     let sessionId = null;
     let partidoSeleccionado = null;
     let telefonoGlobal = sessionStorage.getItem('telefonoGlobal') || null;
-    let adminSocioId = null;  // Para guardar el socio_id cuando el admin modifica
+    let adminSocioId = null;
     const BACKEND_URL = "{{ backend_url }}";
     
     function generarSessionId() {
@@ -437,6 +437,7 @@ HTML = '''
                         if (op.valor === 'cancelar') {
                             enviarConfirmacionEliminar(data.partido_id, data.bono_utilizado);
                         } else if (op.valor === 'modificar') {
+                            adminSocioId = data.socio_id_admin || null;
                             mostrarFormularioModificacion(data.partido_id, data.asiste_actual, data.invitados_actual, data.bolsa_actual);
                         } else if (op.valor === 'salir') {
                             enviarRespuestaOpcion('menu_principal');
@@ -451,6 +452,7 @@ HTML = '''
                 habilitarBotonEnviar(false);
             }
             else if (data.tipo === 'formulario_modificar') {
+                adminSocioId = data.socio_id_admin || null;
                 mostrarFormularioModificacion(data.partido_id, data.asiste, data.invitados, data.bolsa_actual);
             }
             else if (data.tipo === 'formulario_buscar_socio') {
@@ -975,7 +977,6 @@ HTML = '''
         chatMessages.appendChild(loadingMsg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        // Si hay telefonoGlobal, es un socio normal. Si no, es el admin modificando con adminSocioId
         const body = telefonoGlobal 
             ? {
                 telefono: telefonoGlobal,
@@ -992,7 +993,7 @@ HTML = '''
                 usar_bolsa: usarBolsa
               };
         
-        const endpoint = telefonoGlobal ? `${BACKEND_URL}/crear_reserva` : `${BACKEND_URL}/crear_reserva`;
+        const endpoint = `${BACKEND_URL}/crear_reserva`;
         
         fetch(endpoint, {
             method: 'POST',
@@ -1391,6 +1392,18 @@ def chat():
         if not socio_id.isdigit():
             return jsonify({'tipo': 'mensaje', 'mensaje': '❌ El ID debe ser un número.'})
         
+        # Obtener nombre del socio
+        nombre_socio = ""
+        try:
+            socio_info = requests.get(
+                f"{BACKEND_URL}/socio/{int(socio_id)}",
+                timeout=180
+            ).json()
+            if socio_info.get('success'):
+                nombre_socio = f"{socio_info.get('nombre', '')} {socio_info.get('apellidos', '')}"
+        except:
+            pass
+        
         reserva = requests.post(
             f"{BACKEND_URL}/reserva_existente",
             json={'socio_id': int(socio_id), 'partido_id': partido_id},
@@ -1401,9 +1414,12 @@ def chat():
             sesion['paso'] = 'admin_editando_reserva'
             sesion['socio_id_reserva'] = int(socio_id)
             sesion['reserva_actual'] = reserva
+            sesion['socio_nombre_reserva'] = nombre_socio
+            
+            nombre_mostrar = nombre_socio if nombre_socio else f"Socio {socio_id}"
             return jsonify({
                 'tipo': 'opciones_reserva_existente',
-                'mensaje': f"📋 Reserva del socio {socio_id}:\n• Asistes: {'✅ Sí' if reserva.get('plaza_socio') else '❌ No'}\n• Invitados: {reserva.get('num_invitados', 0)}\n• Bono: {'✅ Sí' if reserva.get('bono_utilizado') else '❌ No'}\n\n¿Qué deseas hacer?",
+                'mensaje': f"📋 Reserva de *{nombre_mostrar}* (ID: {socio_id}):\n• Asistes: {'✅ Sí' if reserva.get('plaza_socio') else '❌ No'}\n• Invitados: {reserva.get('num_invitados', 0)}\n• Bono: {'✅ Sí' if reserva.get('bono_utilizado') else '❌ No'}\n\n¿Qué deseas hacer?",
                 'partido_id': partido_id,
                 'bono_utilizado': reserva.get('bono_utilizado', False),
                 'asiste_actual': reserva.get('plaza_socio', False),
