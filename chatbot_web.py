@@ -685,6 +685,7 @@ HTML = '''
         })
         .then(response => response.json())
         .then(data => {
+            console.log('RESPUESTA OPCION:', data);
             limpiarMensajesYFormularios();
             const chatMessages = document.getElementById('chatMessages');
             const botMsg = document.createElement('div');
