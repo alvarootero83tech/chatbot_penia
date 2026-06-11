@@ -288,6 +288,8 @@ HTML = '''
         .then(response => response.json())
         .then(data => {
             limpiarMensajesYFormularios();
+            console.log('TIPO RECIBIDO:', data.tipo);
+            console.log('DATA COMPLETA:', data);
             const botMsg = document.createElement('div');
             botMsg.className = 'message bot-message';
             
